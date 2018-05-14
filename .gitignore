@@ -13,6 +13,7 @@ patch-process/*
 .idea
 .svn
 .classpath
+.scalastyle
 /.metadata
 /.recommenders
 *~
