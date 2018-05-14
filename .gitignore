@@ -1,5 +1,7 @@
 dist
 *classes
+*class
+bin/
 target/
 build/
 build_eclipse/
