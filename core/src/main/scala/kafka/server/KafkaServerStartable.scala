@@ -20,7 +20,7 @@ package kafka.server
 import java.util.Properties
 
 import kafka.metrics.KafkaMetricsReporter
-import kafka.utils.{Exit, Logging, VerifiableProperties}
+import kafka.utils.{ Exit, Logging, VerifiableProperties }
 
 object KafkaServerStartable {
   def fromProps(serverProps: Properties) = {
@@ -65,5 +65,4 @@ class KafkaServerStartable(val staticServerConfig: KafkaConfig, reporters: Seq[K
   def awaitShutdown(): Unit = server.awaitShutdown()
 
 }
-
 

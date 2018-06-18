@@ -17,18 +17,29 @@
 
 package kafka.server
 
-import java.util.concurrent._
-import java.util.concurrent.atomic._
-import java.util.concurrent.locks.{Lock, ReentrantLock, ReentrantReadWriteLock}
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
+
+import scala.collection.Map
+import scala.collection.Seq
+import scala.collection.mutable.ListBuffer
 
 import com.yammer.metrics.core.Gauge
-import kafka.metrics.KafkaMetricsGroup
-import kafka.utils.CoreUtils.{inReadLock, inWriteLock}
-import kafka.utils._
-import kafka.utils.timer._
 
-import scala.collection._
-import scala.collection.mutable.ListBuffer
+import kafka.metrics.KafkaMetricsGroup
+import kafka.utils.CoreUtils.inReadLock
+import kafka.utils.CoreUtils.inWriteLock
+import kafka.utils.Logging
+import kafka.utils.Pool
+import kafka.utils.ShutdownableThread
+import kafka.utils.threadsafe
+import kafka.utils.timer.SystemTimer
+import kafka.utils.timer.Timer
+import kafka.utils.timer.TimerTask
 
 /**
  * An operation whose processing needs to be delayed for at most the given delayMs. For example
@@ -43,8 +54,9 @@ import scala.collection.mutable.ListBuffer
  *
  * A subclass of DelayedOperation needs to provide an implementation of both onComplete() and tryComplete().
  */
-abstract class DelayedOperation(override val delayMs: Long,
-    lockOpt: Option[Lock] = None) extends TimerTask with Logging {
+abstract class DelayedOperation(
+  override val delayMs: Long,
+  lockOpt: Option[Lock] = None) extends TimerTask with Logging {
 
   private val completed = new AtomicBoolean(false)
   private val tryCompletePending = new AtomicBoolean(false)
@@ -147,11 +159,12 @@ abstract class DelayedOperation(override val delayMs: Long,
 
 object DelayedOperationPurgatory {
 
-  def apply[T <: DelayedOperation](purgatoryName: String,
-                                   brokerId: Int = 0,
-                                   purgeInterval: Int = 1000,
-                                   reaperEnabled: Boolean = true,
-                                   timerEnabled: Boolean = true): DelayedOperationPurgatory[T] = {
+  def apply[T <: DelayedOperation](
+    purgatoryName: String,
+    brokerId: Int = 0,
+    purgeInterval: Int = 1000,
+    reaperEnabled: Boolean = true,
+    timerEnabled: Boolean = true): DelayedOperationPurgatory[T] = {
     val timer = new SystemTimer(purgatoryName)
     new DelayedOperationPurgatory[T](purgatoryName, timer, brokerId, purgeInterval, reaperEnabled, timerEnabled)
   }
@@ -161,13 +174,14 @@ object DelayedOperationPurgatory {
 /**
  * A helper purgatory class for bookkeeping delayed operations with a timeout, and expiring timed out operations.
  */
-final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String,
-                                                             timeoutTimer: Timer,
-                                                             brokerId: Int = 0,
-                                                             purgeInterval: Int = 1000,
-                                                             reaperEnabled: Boolean = true,
-                                                             timerEnabled: Boolean = true)
-        extends Logging with KafkaMetricsGroup {
+final class DelayedOperationPurgatory[T <: DelayedOperation](
+  purgatoryName: String,
+  timeoutTimer: Timer,
+  brokerId: Int = 0,
+  purgeInterval: Int = 1000,
+  reaperEnabled: Boolean = true,
+  timerEnabled: Boolean = true)
+  extends Logging with KafkaMetricsGroup {
 
   /* a list of operation watching keys */
   private val watchersForKey = new Pool[Any, Watchers](Some((key: Any) => new Watchers(key)))
@@ -187,16 +201,14 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
     new Gauge[Int] {
       def value: Int = watched
     },
-    metricsTags
-  )
+    metricsTags)
 
   newGauge(
     "NumDelayedOperations",
     new Gauge[Int] {
       def value: Int = delayed
     },
-    metricsTags
-  )
+    metricsTags)
 
   if (reaperEnabled)
     expirationReaper.start()
@@ -234,7 +246,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
       return true
 
     var watchCreated = false
-    for(key <- watchKeys) {
+    for (key <- watchKeys) {
       // If the operation is already completed, stop adding it to the rest of the watcher list.
       if (operation.isCompleted)
         return false
@@ -271,7 +283,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
    */
   def checkAndComplete(key: Any): Int = {
     val watchers = inReadLock(removeWatchersLock) { watchersForKey.get(key) }
-    if(watchers == null)
+    if (watchers == null)
       0
     else
       watchers.tryCompleteWatched()
@@ -290,8 +302,8 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
   def delayed: Int = timeoutTimer.size
 
   /**
-    * Cancel watching on any delayed operations for the given key. Note the operation will not be completed
-    */
+   * Cancel watching on any delayed operations for the given key. Note the operation will not be completed
+   */
   def cancelForKey(key: Any): List[T] = {
     inWriteLock(removeWatchersLock) {
       val watchers = watchersForKey.remove(key)

@@ -16,7 +16,7 @@
  */
 package kafka.security.auth
 
-import kafka.common.{BaseEnum, KafkaException}
+import kafka.common.{ BaseEnum, KafkaException }
 import org.apache.kafka.common.acl.AclOperation
 
 /**
@@ -24,7 +24,7 @@ import org.apache.kafka.common.acl.AclOperation
  */
 
 sealed trait Operation extends BaseEnum {
-  def toJava : AclOperation
+  def toJava: AclOperation
 }
 
 case object Read extends Operation {
@@ -82,5 +82,5 @@ object Operation {
   def fromJava(operation: AclOperation): Operation = fromString(operation.toString.replaceAll("_", ""))
 
   def values: Seq[Operation] = List(Read, Write, Create, Delete, Alter, Describe, ClusterAction, AlterConfigs,
-     DescribeConfigs, IdempotentWrite, All)
+    DescribeConfigs, IdempotentWrite, All)
 }

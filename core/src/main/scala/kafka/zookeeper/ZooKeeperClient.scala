@@ -18,23 +18,48 @@
 package kafka.zookeeper
 
 import java.util.Locale
-import java.util.concurrent.locks.{ReentrantLock, ReentrantReadWriteLock}
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentHashMap, CountDownLatch, Semaphore, TimeUnit}
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
-import com.yammer.metrics.core.{Gauge, MetricName}
-import kafka.metrics.KafkaMetricsGroup
-import kafka.utils.CoreUtils.{inLock, inReadLock, inWriteLock}
-import kafka.utils.{KafkaScheduler, Logging}
-import org.apache.kafka.common.utils.Time
-import org.apache.zookeeper.AsyncCallback.{ACLCallback, Children2Callback, DataCallback, StatCallback, StringCallback, VoidCallback}
-import org.apache.zookeeper.KeeperException.Code
-import org.apache.zookeeper.Watcher.Event.{EventType, KeeperState}
-import org.apache.zookeeper.ZooKeeper.States
-import org.apache.zookeeper.data.{ACL, Stat}
-import org.apache.zookeeper.{CreateMode, KeeperException, WatchedEvent, Watcher, ZooKeeper}
-
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.JavaConverters.mapAsScalaConcurrentMapConverter
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.collection.mutable.Set
+
+import org.apache.kafka.common.utils.Time
+import org.apache.zookeeper.AsyncCallback.ACLCallback
+import org.apache.zookeeper.AsyncCallback.Children2Callback
+import org.apache.zookeeper.AsyncCallback.DataCallback
+import org.apache.zookeeper.AsyncCallback.StatCallback
+import org.apache.zookeeper.AsyncCallback.StringCallback
+import org.apache.zookeeper.AsyncCallback.VoidCallback
+import org.apache.zookeeper.CreateMode
+import org.apache.zookeeper.KeeperException
+import org.apache.zookeeper.KeeperException.Code
+import org.apache.zookeeper.WatchedEvent
+import org.apache.zookeeper.Watcher
+import org.apache.zookeeper.Watcher.Event.EventType
+import org.apache.zookeeper.Watcher.Event.KeeperState
+import org.apache.zookeeper.ZooKeeper
+import org.apache.zookeeper.ZooKeeper.States
+import org.apache.zookeeper.data.ACL
+import org.apache.zookeeper.data.Stat
+
+import com.yammer.metrics.core.Gauge
+import com.yammer.metrics.core.MetricName
+
+import kafka.metrics.KafkaMetricsGroup
+import kafka.utils.CoreUtils.inLock
+import kafka.utils.CoreUtils.inReadLock
+import kafka.utils.CoreUtils.inWriteLock
+import kafka.utils.KafkaScheduler
+import kafka.utils.Logging
 
 /**
  * A ZooKeeper client that encourages pipelined requests.
@@ -44,13 +69,14 @@ import scala.collection.mutable.Set
  * @param connectionTimeoutMs connection timeout in milliseconds
  * @param maxInFlightRequests maximum number of unacknowledged requests the client will send before blocking.
  */
-class ZooKeeperClient(connectString: String,
-                      sessionTimeoutMs: Int,
-                      connectionTimeoutMs: Int,
-                      maxInFlightRequests: Int,
-                      time: Time,
-                      metricGroup: String,
-                      metricType: String) extends Logging with KafkaMetricsGroup {
+class ZooKeeperClient(
+  connectString: String,
+  sessionTimeoutMs: Int,
+  connectionTimeoutMs: Int,
+  maxInFlightRequests: Int,
+  time: Time,
+  metricGroup: String,
+  metricType: String) extends Logging with KafkaMetricsGroup {
   this.logIdent = "[ZooKeeperClient] "
   private val initializationLock = new ReentrantReadWriteLock()
   private val isConnectedOrExpiredLock = new ReentrantLock()
@@ -72,12 +98,12 @@ class ZooKeeperClient(connectString: String,
       AuthFailed -> "AuthFailures",
       ConnectedReadOnly -> "ReadOnlyConnects",
       SaslAuthenticated -> "SaslAuthentications",
-      Expired -> "Expires"
-    )
-    stateToEventTypeMap.map { case (state, eventType) =>
-      val name = s"ZooKeeper${eventType}PerSec"
-      metricNames += name
-      state -> newMeter(name, eventType.toLowerCase(Locale.ROOT), TimeUnit.SECONDS)
+      Expired -> "Expires")
+    stateToEventTypeMap.map {
+      case (state, eventType) =>
+        val name = s"ZooKeeper${eventType}PerSec"
+        metricNames += name
+        state -> newMeter(name, eventType.toLowerCase(Locale.ROOT), TimeUnit.SECONDS)
     }
   }
 
@@ -197,7 +223,8 @@ class ZooKeeperClient(connectString: String,
           override def processResult(rc: Int, path: String, ctx: Any, acl: java.util.List[ACL], stat: Stat): Unit = {
             callback(GetAclResponse(Code.get(rc), path, Option(ctx), Option(acl).map(_.asScala).getOrElse(Seq.empty),
               stat, responseMetadata(sendTimeMs)))
-        }}, ctx.orNull)
+          }
+        }, ctx.orNull)
       case SetAclRequest(path, acl, version, ctx) =>
         zooKeeper.setACL(path, acl.asJava, version, new StatCallback {
           override def processResult(rc: Int, path: String, ctx: Any, stat: Stat): Unit =
@@ -324,7 +351,7 @@ class ZooKeeperClient(connectString: String,
   private[kafka] def currentZooKeeper: ZooKeeper = inReadLock(initializationLock) {
     zooKeeper
   }
-  
+
   private def initialize(): Unit = {
     if (!connectionState.isAlive) {
       zooKeeper.close()
@@ -423,7 +450,7 @@ sealed trait AsyncRequest {
 }
 
 case class CreateRequest(path: String, data: Array[Byte], acl: Seq[ACL], createMode: CreateMode,
-                         ctx: Option[Any] = None) extends AsyncRequest {
+  ctx: Option[Any] = None) extends AsyncRequest {
   type Response = CreateResponse
 }
 
@@ -483,13 +510,13 @@ case class CreateResponse(resultCode: Code, path: String, ctx: Option[Any], name
 case class DeleteResponse(resultCode: Code, path: String, ctx: Option[Any], metadata: ResponseMetadata) extends AsyncResponse
 case class ExistsResponse(resultCode: Code, path: String, ctx: Option[Any], stat: Stat, metadata: ResponseMetadata) extends AsyncResponse
 case class GetDataResponse(resultCode: Code, path: String, ctx: Option[Any], data: Array[Byte], stat: Stat,
-                           metadata: ResponseMetadata) extends AsyncResponse
+  metadata: ResponseMetadata) extends AsyncResponse
 case class SetDataResponse(resultCode: Code, path: String, ctx: Option[Any], stat: Stat, metadata: ResponseMetadata) extends AsyncResponse
 case class GetAclResponse(resultCode: Code, path: String, ctx: Option[Any], acl: Seq[ACL], stat: Stat,
-                          metadata: ResponseMetadata) extends AsyncResponse
+  metadata: ResponseMetadata) extends AsyncResponse
 case class SetAclResponse(resultCode: Code, path: String, ctx: Option[Any], stat: Stat, metadata: ResponseMetadata) extends AsyncResponse
 case class GetChildrenResponse(resultCode: Code, path: String, ctx: Option[Any], children: Seq[String], stat: Stat,
-                               metadata: ResponseMetadata) extends AsyncResponse
+  metadata: ResponseMetadata) extends AsyncResponse
 
 class ZooKeeperClientException(message: String) extends RuntimeException(message)
 class ZooKeeperClientExpiredException(message: String) extends ZooKeeperClientException(message)

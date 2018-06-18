@@ -1,37 +1,39 @@
 /**
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements.  See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package kafka.server
 
 import java.util.Properties
 
+import scala.collection.JavaConverters.asScalaSetConverter
+
+import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.ConfigDef.Importance.MEDIUM
+import org.apache.kafka.common.config.ConfigDef.Range.atLeast
+import org.apache.kafka.common.config.ConfigDef.Type.DOUBLE
+import org.apache.kafka.common.config.ConfigDef.Type.LONG
+
 import kafka.log.LogConfig
 import kafka.security.CredentialProvider
-import org.apache.kafka.common.config.ConfigDef
-import org.apache.kafka.common.config.ConfigDef.Importance._
-import org.apache.kafka.common.config.ConfigDef.Range._
-import org.apache.kafka.common.config.ConfigDef.Type._
-
-import scala.collection.JavaConverters._
 
 /**
-  * Class used to hold dynamic configs. These are configs which have no physical manifestation in the server.properties
-  * and can only be set dynamically.
-  */
+ * Class used to hold dynamic configs. These are configs which have no physical manifestation in the server.properties
+ * and can only be set dynamically.
+ */
 object DynamicConfig {
 
   object Broker {

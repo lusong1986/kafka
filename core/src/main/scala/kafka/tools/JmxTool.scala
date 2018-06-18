@@ -18,25 +18,31 @@
  */
 package kafka.tools
 
-import java.util.Date
 import java.text.SimpleDateFormat
-import javax.management._
-import javax.management.remote._
+import java.util.Date
 
-import joptsimple.OptionParser
-
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.asScalaSetConverter
 import scala.collection.mutable
-import scala.math._
-import kafka.utils.{CommandLineUtils , Exit, Logging}
+import scala.math.max
 
+import javax.management.Attribute
+import javax.management.MBeanServerConnection
+import javax.management.ObjectName
+import javax.management.remote.JMXConnector
+import javax.management.remote.JMXConnectorFactory
+import javax.management.remote.JMXServiceURL
+import joptsimple.OptionParser
+import kafka.utils.CommandLineUtils
+import kafka.utils.Exit
+import kafka.utils.Logging
 
 /**
-  * A program for reading JMX metrics from a given endpoint.
-  *
-  * This tool only works reliably if the JmxServer is fully initialized prior to invoking the tool. See KAFKA-4620 for
-  * details.
-  */
+ * A program for reading JMX metrics from a given endpoint.
+ *
+ * This tool only works reliably if the JmxServer is fully initialized prior to invoking the tool. See KAFKA-4620 for
+ * details.
+ */
 object JmxTool extends Logging {
 
   def main(args: Array[String]) {
@@ -75,12 +81,12 @@ object JmxTool extends Logging {
     val waitOpt = parser.accepts("wait", "Wait for requested JMX objects to become available before starting output. " +
       "Only supported when the list of objects is non-empty and contains no object name patterns.")
 
-    if(args.length == 0)
+    if (args.length == 0)
       CommandLineUtils.printUsageAndDie(parser, "Dump JMX values to standard output.")
 
-    val options = parser.parse(args : _*)
+    val options = parser.parse(args: _*)
 
-    if(options.has(helpOpt)) {
+    if (options.has(helpOpt)) {
       parser.printHelpOn(System.out)
       Exit.exit(0)
     }
@@ -88,9 +94,9 @@ object JmxTool extends Logging {
     val url = new JMXServiceURL(options.valueOf(jmxServiceUrlOpt))
     val interval = options.valueOf(reportingIntervalOpt).intValue
     val attributesWhitelistExists = options.has(attributesOpt)
-    val attributesWhitelist = if(attributesWhitelistExists) Some(options.valueOf(attributesOpt).split(",")) else None
+    val attributesWhitelist = if (attributesWhitelistExists) Some(options.valueOf(attributesOpt).split(",")) else None
     val dateFormatExists = options.has(dateFormatOpt)
-    val dateFormat = if(dateFormatExists) Some(new SimpleDateFormat(options.valueOf(dateFormatOpt))) else None
+    val dateFormat = if (dateFormatExists) Some(new SimpleDateFormat(options.valueOf(dateFormatOpt))) else None
     val wait = options.has(waitOpt)
 
     var jmxc: JMXConnector = null
@@ -105,7 +111,7 @@ object JmxTool extends Logging {
         mbsc = jmxc.getMBeanServerConnection
         connected = true
       } catch {
-        case e : Exception =>
+        case e: Exception =>
           System.err.println(s"Could not connect to JMX url: $url. Exception ${e.getMessage}.")
           e.printStackTrace()
           Thread.sleep(100)
@@ -119,7 +125,7 @@ object JmxTool extends Logging {
     }
 
     val queries: Iterable[ObjectName] =
-      if(options.has(objectNameOpt))
+      if (options.has(objectNameOpt))
         options.valuesOf(objectNameOpt).asScala.map(new ObjectName(_))
       else
         List(null)
@@ -152,24 +158,25 @@ object JmxTool extends Logging {
       if (attributesWhitelistExists)
         queries.map((_, attributesWhitelist.get.size)).toMap
       else {
-        names.map{(name: ObjectName) =>
+        names.map { (name: ObjectName) =>
           val mbean = mbsc.getMBeanInfo(name)
-          (name, mbsc.getAttributes(name, mbean.getAttributes.map(_.getName)).size)}.toMap
+          (name, mbsc.getAttributes(name, mbean.getAttributes.map(_.getName)).size)
+        }.toMap
       }
 
     // print csv header
     val keys = List("time") ++ queryAttributes(mbsc, names, attributesWhitelist).keys.toArray.sorted
-    if(keys.size == numExpectedAttributes.values.sum + 1)
+    if (keys.size == numExpectedAttributes.values.sum + 1)
       println(keys.map("\"" + _ + "\"").mkString(","))
 
-    while(true) {
+    while (true) {
       val start = System.currentTimeMillis
       val attributes = queryAttributes(mbsc, names, attributesWhitelist)
       attributes("time") = dateFormat match {
         case Some(dFormat) => dFormat.format(new Date)
         case None => System.currentTimeMillis().toString
       }
-      if(attributes.keySet.size == numExpectedAttributes.values.sum + 1)
+      if (attributes.keySet.size == numExpectedAttributes.values.sum + 1)
         println(keys.map(attributes(_)).mkString(","))
       val sleep = max(0, interval - (System.currentTimeMillis - start))
       Thread.sleep(sleep)

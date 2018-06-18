@@ -21,7 +21,7 @@ import java.io._
 import java.nio.ByteBuffer
 
 import joptsimple.OptionParser
-import kafka.coordinator.group.{GroupMetadataKey, GroupMetadataManager, OffsetKey}
+import kafka.coordinator.group.{ GroupMetadataKey, GroupMetadataManager, OffsetKey }
 import kafka.coordinator.transaction.TransactionLog
 import kafka.log._
 import kafka.serializer.Decoder
@@ -31,7 +31,7 @@ import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.record._
 import org.apache.kafka.common.utils.Utils
 
-import scala.collection.{Map, mutable}
+import scala.collection.{ Map, mutable }
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.JavaConverters._
 
@@ -44,23 +44,23 @@ object DumpLogSegments {
     val indexSanityOpt = parser.accepts("index-sanity-check", "if set, just checks the index sanity without printing its content. " +
       "This is the same check that is executed on broker startup to determine if an index needs rebuilding or not.")
     val filesOpt = parser.accepts("files", "REQUIRED: The comma separated list of data and index log files to be dumped.")
-                           .withRequiredArg
-                           .describedAs("file1, file2, ...")
-                           .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("file1, file2, ...")
+      .ofType(classOf[String])
     val maxMessageSizeOpt = parser.accepts("max-message-size", "Size of largest message.")
-                                  .withRequiredArg
-                                  .describedAs("size")
-                                  .ofType(classOf[java.lang.Integer])
-                                  .defaultsTo(5 * 1024 * 1024)
+      .withRequiredArg
+      .describedAs("size")
+      .ofType(classOf[java.lang.Integer])
+      .defaultsTo(5 * 1024 * 1024)
     val deepIterationOpt = parser.accepts("deep-iteration", "if set, uses deep instead of shallow iteration. Automatically set if print-data-log is enabled.")
     val valueDecoderOpt = parser.accepts("value-decoder-class", "if set, used to deserialize the messages. This class should implement kafka.serializer.Decoder trait. Custom jar should be available in kafka/libs directory.")
-                               .withOptionalArg()
-                               .ofType(classOf[java.lang.String])
-                               .defaultsTo("kafka.serializer.StringDecoder")
+      .withOptionalArg()
+      .ofType(classOf[java.lang.String])
+      .defaultsTo("kafka.serializer.StringDecoder")
     val keyDecoderOpt = parser.accepts("key-decoder-class", "if set, used to deserialize the keys. This class should implement kafka.serializer.Decoder trait. Custom jar should be available in kafka/libs directory.")
-                               .withOptionalArg()
-                               .ofType(classOf[java.lang.String])
-                               .defaultsTo("kafka.serializer.StringDecoder")
+      .withOptionalArg()
+      .ofType(classOf[java.lang.String])
+      .defaultsTo("kafka.serializer.StringDecoder")
     val offsetsOpt = parser.accepts("offsets-decoder", "if set, log data will be parsed as offset data from the " +
       "__consumer_offsets topic.")
     val transactionLogOpt = parser.accepts("transaction-log-decoder", "if set, log data will be parsed as " +
@@ -68,9 +68,9 @@ object DumpLogSegments {
 
     val helpOpt = parser.accepts("help", "Print usage information.")
 
-    val options = parser.parse(args : _*)
+    val options = parser.parse(args: _*)
 
-    if(args.length == 0 || options.has(helpOpt))
+    if (args.length == 0 || options.has(helpOpt))
       CommandLineUtils.printUsageAndDie(parser, "Parse a log file and dump its contents to the console, useful for debugging a seemingly corrupt log segment.")
 
     CommandLineUtils.checkRequiredArgs(parser, options, filesOpt)
@@ -101,7 +101,7 @@ object DumpLogSegments {
     val timeIndexDumpErrors = new TimeIndexDumpErrors
     val nonConsecutivePairsForLogFilesMap = new mutable.HashMap[String, List[(Long, Long)]]
 
-    for(arg <- files) {
+    for (arg <- files) {
       val file = new File(arg)
       println(s"Dumping $file")
 
@@ -109,7 +109,7 @@ object DumpLogSegments {
       val suffix = filename.substring(filename.lastIndexOf("."))
       suffix match {
         case Log.LogFileSuffix =>
-          dumpLog(file, printDataLog, nonConsecutivePairsForLogFilesMap, isDeepIteration, maxMessageSize , messageParser)
+          dumpLog(file, printDataLog, nonConsecutivePairsForLogFilesMap, isDeepIteration, maxMessageSize, messageParser)
         case Log.IndexFileSuffix =>
           dumpIndex(file, indexSanityOnly, verifyOnly, misMatchesForIndexFilesMap, maxMessageSize)
         case Log.TimeIndexFileSuffix =>
@@ -170,11 +170,12 @@ object DumpLogSegments {
   }
 
   /* print out the contents of the index */
-  private def dumpIndex(file: File,
-                        indexSanityOnly: Boolean,
-                        verifyOnly: Boolean,
-                        misMatchesForIndexFilesMap: mutable.HashMap[String, List[(Long, Long)]],
-                        maxMessageSize: Int) {
+  private def dumpIndex(
+    file: File,
+    indexSanityOnly: Boolean,
+    verifyOnly: Boolean,
+    misMatchesForIndexFilesMap: mutable.HashMap[String, List[(Long, Long)]],
+    maxMessageSize: Int) {
     val startOffset = file.getName.split("\\.")(0).toLong
     val logFile = new File(file.getAbsoluteFile.getParent, file.getName.split("\\.")(0) + Log.LogFileSuffix)
     val fileRecords = FileRecords.open(logFile, false)
@@ -187,28 +188,29 @@ object DumpLogSegments {
       return
     }
 
-    for(i <- 0 until index.entries) {
+    for (i <- 0 until index.entries) {
       val entry = index.entry(i)
       val slice = fileRecords.read(entry.position, maxMessageSize)
       val firstRecord = slice.records.iterator.next()
       if (firstRecord.offset != entry.offset + index.baseOffset) {
         var misMatchesSeq = misMatchesForIndexFilesMap.getOrElse(file.getAbsolutePath, List[(Long, Long)]())
-        misMatchesSeq ::=(entry.offset + index.baseOffset, firstRecord.offset)
+        misMatchesSeq ::= (entry.offset + index.baseOffset, firstRecord.offset)
         misMatchesForIndexFilesMap.put(file.getAbsolutePath, misMatchesSeq)
       }
       // since it is a sparse file, in the event of a crash there may be many zero entries, stop if we see one
-      if(entry.offset == 0 && i > 0)
+      if (entry.offset == 0 && i > 0)
         return
       if (!verifyOnly)
         println("offset: %d position: %d".format(entry.offset + index.baseOffset, entry.position))
     }
   }
 
-  private def dumpTimeIndex(file: File,
-                            indexSanityOnly: Boolean,
-                            verifyOnly: Boolean,
-                            timeIndexDumpErrors: TimeIndexDumpErrors,
-                            maxMessageSize: Int) {
+  private def dumpTimeIndex(
+    file: File,
+    indexSanityOnly: Boolean,
+    verifyOnly: Boolean,
+    timeIndexDumpErrors: TimeIndexDumpErrors,
+    maxMessageSize: Int) {
     val startOffset = file.getName.split("\\.")(0).toLong
     val logFile = new File(file.getAbsoluteFile.getParent, file.getName.split("\\.")(0) + Log.LogFileSuffix)
     val fileRecords = FileRecords.open(logFile, false)
@@ -224,7 +226,7 @@ object DumpLogSegments {
     }
 
     var prevTimestamp = RecordBatch.NO_TIMESTAMP
-    for(i <- 0 until timeIndex.entries) {
+    for (i <- 0 until timeIndex.entries) {
       val entry = timeIndex.entry(i)
       val position = index.lookup(entry.offset + timeIndex.baseOffset).position
       val partialFileRecords = fileRecords.read(position, Int.MaxValue)
@@ -344,8 +346,7 @@ object DumpLogSegments {
         "protocolType" -> protocolType,
         "protocol" -> group.protocolOrNull,
         "generationId" -> group.generationId,
-        "assignment" -> assignment
-      ).asJava)
+        "assignment" -> assignment).asJava)
 
       (Some(keyString), Some(valueString))
     }
@@ -366,12 +367,13 @@ object DumpLogSegments {
   }
 
   /* print out the contents of the log */
-  private def dumpLog(file: File,
-                      printContents: Boolean,
-                      nonConsecutivePairsForLogFilesMap: mutable.HashMap[String, List[(Long, Long)]],
-                      isDeepIteration: Boolean,
-                      maxMessageSize: Int,
-                      parser: MessageParser[_, _]) {
+  private def dumpLog(
+    file: File,
+    printContents: Boolean,
+    nonConsecutivePairsForLogFilesMap: mutable.HashMap[String, List[(Long, Long)]],
+    isDeepIteration: Boolean,
+    maxMessageSize: Int,
+    parser: MessageParser[_, _]) {
     val startOffset = file.getName.split("\\.")(0).toLong
     println("Starting offset: " + startOffset)
     val messageSet = FileRecords.open(file, false)
@@ -436,7 +438,7 @@ object DumpLogSegments {
       validBytes += batch.sizeInBytes
     }
     val trailingBytes = messageSet.sizeInBytes - validBytes
-    if(trailingBytes > 0)
+    if (trailingBytes > 0)
       println("Found %d invalid bytes at the end of %s".format(trailingBytes, file.getName))
   }
 
@@ -487,8 +489,9 @@ object DumpLogSegments {
 
       shallowOffsetNotFound.values.foreach { listOfShallowOffsetNotFound =>
         System.err.println("The following indexed offsets are not found in the log.")
-        listOfShallowOffsetNotFound.foreach { case (indexedOffset, logOffset) =>
-          System.err.println(s"Indexed offset: $indexedOffset, found log offset: $logOffset")
+        listOfShallowOffsetNotFound.foreach {
+          case (indexedOffset, logOffset) =>
+            System.err.println(s"Indexed offset: $indexedOffset, found log offset: $logOffset")
         }
       }
     }

@@ -17,10 +17,9 @@
 
 package kafka.server
 
-import java.util.concurrent.{TimeUnit, Delayed}
+import java.util.concurrent.{ TimeUnit, Delayed }
 
 import org.apache.kafka.common.utils.Time
-
 
 /**
  * Represents a request whose response has been delayed.

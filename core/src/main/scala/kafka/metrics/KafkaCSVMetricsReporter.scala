@@ -27,23 +27,21 @@ import java.nio.file.Files
 import com.yammer.metrics.reporting.CsvReporter
 import java.util.concurrent.TimeUnit
 
-import kafka.utils.{Logging, VerifiableProperties}
+import kafka.utils.{ Logging, VerifiableProperties }
 import org.apache.kafka.common.utils.Utils
 
 private trait KafkaCSVMetricsReporterMBean extends KafkaMetricsReporterMBean
 
 private class KafkaCSVMetricsReporter extends KafkaMetricsReporter
-                              with KafkaCSVMetricsReporterMBean
-                              with Logging {
+  with KafkaCSVMetricsReporterMBean
+  with Logging {
 
   private var csvDir: File = null
   private var underlying: CsvReporter = null
   private var running = false
   private var initialized = false
 
-
   override def getMBeanName = "kafka:type=kafka.metrics.KafkaCSVMetricsReporter"
-
 
   override def init(props: VerifiableProperties) {
     synchronized {
@@ -61,7 +59,6 @@ private class KafkaCSVMetricsReporter extends KafkaMetricsReporter
     }
   }
 
-
   override def startReporter(pollingPeriodSecs: Long) {
     synchronized {
       if (initialized && !running) {
@@ -71,7 +68,6 @@ private class KafkaCSVMetricsReporter extends KafkaMetricsReporter
       }
     }
   }
-
 
   override def stopReporter() {
     synchronized {

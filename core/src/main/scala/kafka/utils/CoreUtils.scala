@@ -20,9 +20,9 @@ package kafka.utils
 import java.io._
 import java.nio._
 import java.nio.channels._
-import java.util.concurrent.locks.{Lock, ReadWriteLock}
+import java.util.concurrent.locks.{ Lock, ReadWriteLock }
 import java.lang.management._
-import java.util.{Properties, UUID}
+import java.util.{ Properties, UUID }
 import javax.management._
 
 import scala.collection._
@@ -30,7 +30,7 @@ import scala.collection.mutable
 import kafka.cluster.EndPoint
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.security.auth.SecurityProtocol
-import org.apache.kafka.common.utils.{Base64, KafkaThread, Utils}
+import org.apache.kafka.common.utils.{ Base64, KafkaThread, Utils }
 import org.slf4j.event.Level
 
 /**
@@ -63,23 +63,23 @@ object CoreUtils extends Logging {
     }
 
   /**
-    * Create a thread
-    *
-    * @param name The name of the thread
-    * @param daemon Whether the thread should block JVM shutdown
-    * @param fun The function to execute in the thread
-    * @return The unstarted thread
-    */
+   * Create a thread
+   *
+   * @param name The name of the thread
+   * @param daemon Whether the thread should block JVM shutdown
+   * @param fun The function to execute in the thread
+   * @return The unstarted thread
+   */
   def newThread(name: String, daemon: Boolean)(fun: => Unit): Thread =
     new KafkaThread(name, runnable(fun), daemon)
 
   /**
-    * Do the given action and log any exceptions thrown without rethrowing them.
-    *
-    * @param action The action to execute.
-    * @param logging The logging instance to use for logging the thrown exception.
-    * @param logLevel The log level to use for logging.
-    */
+   * Do the given action and log any exceptions thrown without rethrowing them.
+   *
+   * @param action The action to execute.
+   * @param logging The logging instance to use for logging the thrown exception.
+   * @param logLevel The log level to use for logging.
+   */
   def swallow(action: => Unit, logging: Logging, logLevel: Level = Level.WARN) {
     try {
       action
@@ -139,7 +139,7 @@ object CoreUtils extends Logging {
       val mbs = ManagementFactory.getPlatformMBeanServer()
       mbs synchronized {
         val objName = new ObjectName(name)
-        if(mbs.isRegistered(objName))
+        if (mbs.isRegistered(objName))
           mbs.unregisterMBean(objName)
         mbs.registerMBean(mbean, objName)
         true
@@ -160,7 +160,7 @@ object CoreUtils extends Logging {
     val mbs = ManagementFactory.getPlatformMBeanServer()
     mbs synchronized {
       val objName = new ObjectName(name)
-      if(mbs.isRegistered(objName))
+      if (mbs.isRegistered(objName))
         mbs.unregisterMBean(objName)
     }
   }
@@ -188,7 +188,7 @@ object CoreUtils extends Logging {
       return map
     val keyVals = str.split("\\s*,\\s*").map(s => {
       val lio = s.lastIndexOf(":")
-      (s.substring(0,lio).trim, s.substring(lio + 1).trim)
+      (s.substring(0, lio).trim, s.substring(lio + 1).trim)
     })
     keyVals.toMap
   }
@@ -198,7 +198,7 @@ object CoreUtils extends Logging {
    * Whitespace surrounding the comma will be removed.
    */
   def parseCsvList(csvList: String): Seq[String] = {
-    if(csvList == null || csvList.isEmpty)
+    if (csvList == null || csvList.isEmpty)
       Seq.empty[String]
     else {
       csvList.split("\\s*,\\s*").filter(v => !v.equals(""))
@@ -226,7 +226,7 @@ object CoreUtils extends Logging {
    * Replace the given string suffix with the new suffix. If the string doesn't end with the given suffix throw an exception.
    */
   def replaceSuffix(s: String, oldSuffix: String, newSuffix: String): String = {
-    if(!s.endsWith(oldSuffix))
+    if (!s.endsWith(oldSuffix))
       throw new IllegalArgumentException("Expected string to end with '%s' but string is '%s'".format(oldSuffix, s))
     s.substring(0, s.length - oldSuffix.length) + newSuffix
   }
@@ -236,9 +236,9 @@ object CoreUtils extends Logging {
    */
   def readInt(bytes: Array[Byte], offset: Int): Int = {
     ((bytes(offset) & 0xFF) << 24) |
-    ((bytes(offset + 1) & 0xFF) << 16) |
-    ((bytes(offset + 2) & 0xFF) << 8) |
-    (bytes(offset + 3) & 0xFF)
+      ((bytes(offset + 1) & 0xFF) << 16) |
+      ((bytes(offset + 2) & 0xFF) << 8) |
+      (bytes(offset + 3) & 0xFF)
   }
 
   /**
@@ -257,13 +257,12 @@ object CoreUtils extends Logging {
 
   def inWriteLock[T](lock: ReadWriteLock)(fun: => T): T = inLock[T](lock.writeLock)(fun)
 
-
   //JSON strings need to be escaped based on ECMA-404 standard http://json.org
-  def JSONEscapeString (s : String) : String = {
+  def JSONEscapeString(s: String): String = {
     s.map {
-      case '"'  => "\\\""
+      case '"' => "\\\""
       case '\\' => "\\\\"
-      case '/'  => "\\/"
+      case '/' => "\\/"
       case '\b' => "\\b"
       case '\f' => "\\f"
       case '\n' => "\\n"
@@ -287,7 +286,7 @@ object CoreUtils extends Logging {
    */
   def duplicates[T](s: Traversable[T]): Iterable[T] = {
     s.groupBy(identity)
-      .map { case (k, l) => (k, l.size)}
+      .map { case (k, l) => (k, l.size) }
       .filter { case (_, l) => l > 1 }
       .keys
   }

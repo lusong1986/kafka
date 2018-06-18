@@ -16,10 +16,10 @@
  */
 package kafka.producer
 
-import kafka.metrics.{KafkaTimer, KafkaMetricsGroup}
+import kafka.metrics.{ KafkaTimer, KafkaMetricsGroup }
 import java.util.concurrent.TimeUnit
 import kafka.utils.Pool
-import kafka.common.{ClientIdAllBrokers, ClientIdBroker, ClientIdAndBroker}
+import kafka.common.{ ClientIdAllBrokers, ClientIdBroker, ClientIdAndBroker }
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.10.0.0")
 class ProducerRequestMetrics(metricId: ClientIdBroker) extends KafkaMetricsGroup {

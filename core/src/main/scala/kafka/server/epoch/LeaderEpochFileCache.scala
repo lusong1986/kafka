@@ -1,30 +1,34 @@
 /**
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements.  See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package kafka.server.epoch
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
+import scala.collection.mutable.ListBuffer
+
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.requests.EpochEndOffset.UNDEFINED_EPOCH
+import org.apache.kafka.common.requests.EpochEndOffset.UNDEFINED_EPOCH_OFFSET
+
 import kafka.server.LogOffsetMetadata
 import kafka.server.checkpoints.LeaderEpochCheckpoint
-import org.apache.kafka.common.requests.EpochEndOffset.{UNDEFINED_EPOCH, UNDEFINED_EPOCH_OFFSET}
-import kafka.utils.CoreUtils._
+import kafka.utils.CoreUtils.inReadLock
+import kafka.utils.CoreUtils.inWriteLock
 import kafka.utils.Logging
-import org.apache.kafka.common.TopicPartition
-import scala.collection.mutable.ListBuffer
 
 trait LeaderEpochCache {
   def assign(leaderEpoch: Int, offset: Long)
@@ -37,25 +41,25 @@ trait LeaderEpochCache {
 }
 
 /**
-  * Represents a cache of (LeaderEpoch => Offset) mappings for a particular replica.
-  *
-  * Leader Epoch = epoch assigned to each leader by the controller.
-  * Offset = offset of the first message in each epoch.
-  *
-  * @param leo a function that determines the log end offset
-  * @param checkpoint the checkpoint file
-  */
+ * Represents a cache of (LeaderEpoch => Offset) mappings for a particular replica.
+ *
+ * Leader Epoch = epoch assigned to each leader by the controller.
+ * Offset = offset of the first message in each epoch.
+ *
+ * @param leo a function that determines the log end offset
+ * @param checkpoint the checkpoint file
+ */
 class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetMetadata, checkpoint: LeaderEpochCheckpoint) extends LeaderEpochCache with Logging {
   private val lock = new ReentrantReadWriteLock()
   private var epochs: ListBuffer[EpochEntry] = inWriteLock(lock) { ListBuffer(checkpoint.read(): _*) }
 
   /**
-    * Assigns the supplied Leader Epoch to the supplied Offset
-    * Once the epoch is assigned it cannot be reassigned
-    *
-    * @param epoch
-    * @param offset
-    */
+   * Assigns the supplied Leader Epoch to the supplied Offset
+   * Once the epoch is assigned it cannot be reassigned
+   *
+   * @param epoch
+   * @param offset
+   */
   override def assign(epoch: Int, offset: Long): Unit = {
     inWriteLock(lock) {
       if (epoch >= 0 && epoch > latestEpoch && offset >= latestOffset) {
@@ -69,11 +73,11 @@ class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetM
   }
 
   /**
-    * Returns the current Leader Epoch. This is the latest epoch
-    * which has messages assigned to it.
-    *
-    * @return
-    */
+   * Returns the current Leader Epoch. This is the latest epoch
+   * which has messages assigned to it.
+   *
+   * @return
+   */
   override def latestEpoch(): Int = {
     inReadLock(lock) {
       if (epochs.isEmpty) UNDEFINED_EPOCH else epochs.last.epoch
@@ -81,25 +85,24 @@ class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetM
   }
 
   /**
-    * Returns the End Offset for a requested Leader Epoch.
-    *
-    * This is defined as the start offset of the first Leader Epoch larger than the
-    * Leader Epoch requested, or else the Log End Offset if the latest epoch was requested.
-    *
-    * During the upgrade phase, where there are existing messages may not have a leader epoch,
-    * if requestedEpoch is < the first epoch cached, UNSUPPORTED_EPOCH_OFFSET will be returned
-    * so that the follower falls back to High Water Mark.
-    *
-    * @param requestedEpoch
-    * @return offset
-    */
+   * Returns the End Offset for a requested Leader Epoch.
+   *
+   * This is defined as the start offset of the first Leader Epoch larger than the
+   * Leader Epoch requested, or else the Log End Offset if the latest epoch was requested.
+   *
+   * During the upgrade phase, where there are existing messages may not have a leader epoch,
+   * if requestedEpoch is < the first epoch cached, UNSUPPORTED_EPOCH_OFFSET will be returned
+   * so that the follower falls back to High Water Mark.
+   *
+   * @param requestedEpoch
+   * @return offset
+   */
   override def endOffsetFor(requestedEpoch: Int): Long = {
     inReadLock(lock) {
       val offset =
         if (requestedEpoch == latestEpoch) {
           leo().messageOffset
-        }
-        else {
+        } else {
           val subsequentEpochs = epochs.filter(e => e.epoch > requestedEpoch)
           if (subsequentEpochs.isEmpty || requestedEpoch < epochs.head.epoch)
             UNDEFINED_EPOCH_OFFSET
@@ -112,10 +115,10 @@ class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetM
   }
 
   /**
-    * Removes all epoch entries from the store with start offsets greater than or equal to the passed offset.
-    *
-    * @param offset
-    */
+   * Removes all epoch entries from the store with start offsets greater than or equal to the passed offset.
+   *
+   * @param offset
+   */
   override def clearAndFlushLatest(offset: Long): Unit = {
     inWriteLock(lock) {
       val before = epochs
@@ -128,13 +131,13 @@ class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetM
   }
 
   /**
-    * Clears old epoch entries. This method searches for the oldest epoch < offset, updates the saved epoch offset to
-    * be offset, then clears any previous epoch entries.
-    *
-    * This method is exclusive: so clearEarliest(6) will retain an entry at offset 6.
-    *
-    * @param offset the offset to clear up to
-    */
+   * Clears old epoch entries. This method searches for the oldest epoch < offset, updates the saved epoch offset to
+   * be offset, then clears any previous epoch entries.
+   *
+   * This method is exclusive: so clearEarliest(6) will retain an entry at offset 6.
+   *
+   * @param offset the offset to clear up to
+   */
   override def clearAndFlushEarliest(offset: Long): Unit = {
     inWriteLock(lock) {
       val before = epochs
@@ -153,8 +156,8 @@ class LeaderEpochFileCache(topicPartition: TopicPartition, leo: () => LogOffsetM
   }
 
   /**
-    * Delete all entries.
-    */
+   * Delete all entries.
+   */
   override def clearAndFlush() = {
     inWriteLock(lock) {
       epochs.clear()

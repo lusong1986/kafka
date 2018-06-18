@@ -17,7 +17,6 @@
 
 package kafka.utils
 
-
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 
@@ -29,7 +28,7 @@ import javax.management.ObjectName
  * This feature must be enabled with -Dmx4jenable=true
  *
  * This is a Scala port of org.apache.cassandra.utils.Mx4jTool written by Ran Tavory for CASSANDRA-1068
- * */
+ */
 object Mx4jLoader extends Logging {
 
   def maybeLoad(): Boolean = {
@@ -59,9 +58,8 @@ object Mx4jLoader extends Logging {
       httpAdaptorClass.getMethod("start").invoke(httpAdaptor)
       info("mx4j successfuly loaded")
       return true
-    }
-    catch {
-	  case _: ClassNotFoundException =>
+    } catch {
+      case _: ClassNotFoundException =>
         info("Will not load MX4J, mx4j-tools.jar is not in the classpath")
       case e: Throwable =>
         warn("Could not start register mbean in JMX", e)

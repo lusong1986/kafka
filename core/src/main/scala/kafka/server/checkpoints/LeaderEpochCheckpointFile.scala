@@ -54,8 +54,8 @@ object LeaderEpochCheckpointFile {
 }
 
 /**
-  * This class persists a map of (LeaderEpoch => Offsets) to a file (for a certain replica)
-  */
+ * This class persists a map of (LeaderEpoch => Offsets) to a file (for a certain replica)
+ */
 class LeaderEpochCheckpointFile(val file: File, logDirFailureChannel: LogDirFailureChannel = null) extends LeaderEpochCheckpoint {
   import LeaderEpochCheckpointFile._
 

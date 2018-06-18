@@ -21,7 +21,7 @@ import java.util.Properties
 
 import DynamicConfig.Broker._
 import kafka.api.ApiVersion
-import kafka.log.{LogConfig, LogManager}
+import kafka.log.{ LogConfig, LogManager }
 import kafka.security.CredentialProvider
 import kafka.server.Constants._
 import kafka.server.QuotaFactory.QuotaManagers
@@ -36,17 +36,17 @@ import org.apache.kafka.common.utils.Sanitizer
 import scala.collection.JavaConverters._
 
 /**
-  * The ConfigHandler is used to process config change notifications received by the DynamicConfigManager
-  */
+ * The ConfigHandler is used to process config change notifications received by the DynamicConfigManager
+ */
 trait ConfigHandler {
   def processConfigChanges(entityName: String, value: Properties)
 }
 
 /**
-  * The TopicConfigHandler will process topic config changes in ZK.
-  * The callback provides the topic name and the full properties set read from ZK
-  */
-class TopicConfigHandler(private val logManager: LogManager, kafkaConfig: KafkaConfig, val quotas: QuotaManagers) extends ConfigHandler with Logging  {
+ * The TopicConfigHandler will process topic config changes in ZK.
+ * The callback provides the topic name and the full properties set read from ZK
+ */
+class TopicConfigHandler(private val logManager: LogManager, kafkaConfig: KafkaConfig, val quotas: QuotaManagers) extends ConfigHandler with Logging {
 
   def processConfigChanges(topic: String, topicConfig: Properties) {
     // Validate the configurations.
@@ -56,8 +56,9 @@ class TopicConfigHandler(private val logManager: LogManager, kafkaConfig: KafkaC
     if (logs.nonEmpty) {
       /* combine the default properties with the overrides in zk to create the new LogConfig */
       val props = new Properties()
-      topicConfig.asScala.foreach { case (key, value) =>
-        if (!configNamesToExclude.contains(key)) props.put(key, value)
+      topicConfig.asScala.foreach {
+        case (key, value) =>
+          if (!configNamesToExclude.contains(key)) props.put(key, value)
       }
       val logConfig = LogConfig.fromProps(logManager.currentDefaultConfig.originals, props)
       logs.foreach(_.updateConfig(topicConfig.asScala.keySet, logConfig))
@@ -86,8 +87,8 @@ class TopicConfigHandler(private val logManager: LogManager, kafkaConfig: KafkaC
       case _ => configValue.trim
         .split(",")
         .map(_.split(":"))
-        .filter(_ (1).toInt == brokerId) //Filter this replica
-        .map(_ (0).toInt).toSeq //convert to list of partition ids
+        .filter(_(1).toInt == brokerId) //Filter this replica
+        .map(_(0).toInt).toSeq //convert to list of partition ids
     }
   }
 
@@ -103,7 +104,6 @@ class TopicConfigHandler(private val logManager: LogManager, kafkaConfig: KafkaC
     }.toSet
   }
 }
-
 
 /**
  * Handles <client-id>, <user> or <user, client-id> quota config updates in ZK.
@@ -166,12 +166,13 @@ class UserConfigHandler(private val quotaManagers: QuotaManagers, val credential
 }
 
 /**
-  * The BrokerConfigHandler will process individual broker config changes in ZK.
-  * The callback provides the brokerId and the full properties set read from ZK.
-  * This implementation reports the overrides to the respective ReplicationQuotaManager objects
-  */
-class BrokerConfigHandler(private val brokerConfig: KafkaConfig,
-                          private val quotaManagers: QuotaManagers) extends ConfigHandler with Logging {
+ * The BrokerConfigHandler will process individual broker config changes in ZK.
+ * The callback provides the brokerId and the full properties set read from ZK.
+ * This implementation reports the overrides to the respective ReplicationQuotaManager objects
+ */
+class BrokerConfigHandler(
+  private val brokerConfig: KafkaConfig,
+  private val quotaManagers: QuotaManagers) extends ConfigHandler with Logging {
 
   def processConfigChanges(brokerId: String, properties: Properties) {
     def getOrDefault(prop: String): Long = {

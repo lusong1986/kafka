@@ -19,16 +19,24 @@ package kafka.server
 
 import java.nio.charset.StandardCharsets
 
-import kafka.common.{NotificationHandler, ZkNodeChangeNotificationListener}
-import kafka.utils.{Json, Logging}
-import kafka.utils.json.JsonObject
-import kafka.zk.{KafkaZkClient, AdminZkClient, ConfigEntityChangeNotificationZNode, ConfigEntityChangeNotificationSequenceZNode}
+import scala.collection.JavaConverters.propertiesAsScalaMapConverter
+import scala.collection.Map
+import scala.collection.Seq
+import scala.collection.Set
+
 import org.apache.kafka.common.config.types.Password
 import org.apache.kafka.common.security.scram.ScramMechanism
 import org.apache.kafka.common.utils.Time
 
-import scala.collection.JavaConverters._
-import scala.collection._
+import kafka.common.NotificationHandler
+import kafka.common.ZkNodeChangeNotificationListener
+import kafka.utils.Json
+import kafka.utils.Logging
+import kafka.utils.json.JsonObject
+import kafka.zk.AdminZkClient
+import kafka.zk.ConfigEntityChangeNotificationSequenceZNode
+import kafka.zk.ConfigEntityChangeNotificationZNode
+import kafka.zk.KafkaZkClient
 
 /**
  * Represents all the entities that can be configured via ZK

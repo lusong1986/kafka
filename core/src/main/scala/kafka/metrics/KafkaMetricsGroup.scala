@@ -20,15 +20,14 @@ package kafka.metrics
 import java.util.concurrent.TimeUnit
 
 import com.yammer.metrics.Metrics
-import com.yammer.metrics.core.{Gauge, MetricName}
-import kafka.consumer.{ConsumerTopicStatsRegistry, FetchRequestAndResponseStatsRegistry}
-import kafka.producer.{ProducerRequestStatsRegistry, ProducerStatsRegistry, ProducerTopicStatsRegistry}
+import com.yammer.metrics.core.{ Gauge, MetricName }
+import kafka.consumer.{ ConsumerTopicStatsRegistry, FetchRequestAndResponseStatsRegistry }
+import kafka.producer.{ ProducerRequestStatsRegistry, ProducerStatsRegistry, ProducerTopicStatsRegistry }
 import kafka.utils.Logging
 import org.apache.kafka.common.utils.Sanitizer
 
 import scala.collection.immutable
 import scala.collection.JavaConverters._
-
 
 trait KafkaMetricsGroup extends Logging {
 
@@ -47,9 +46,8 @@ trait KafkaMetricsGroup extends Logging {
     explicitMetricName(pkg, simpleName, name, tags)
   }
 
-
   protected def explicitMetricName(group: String, typeName: String, name: String,
-                                   tags: scala.collection.Map[String, String]): MetricName = {
+    tags: scala.collection.Map[String, String]): MetricName = {
 
     val nameBuilder: StringBuilder = new StringBuilder
 
@@ -85,7 +83,6 @@ trait KafkaMetricsGroup extends Logging {
 
   def removeMetric(name: String, tags: scala.collection.Map[String, String] = Map.empty) =
     Metrics.defaultRegistry().removeMetric(metricName(name, tags))
-
 
 }
 
@@ -129,8 +126,7 @@ object KafkaMetricsGroup extends KafkaMetricsGroup with Logging {
      * metric for SyncProducer in fetchTopicMetaData() needs to be removed when consumer is closed.
      */
     new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestRateAndTimeMs"),
-    new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestSize")
-  )
+    new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestSize"))
 
   private val producerMetricNameList: immutable.List[MetricName] = immutable.List[MetricName](
     // kafka.producer.ProducerStats <-- DefaultEventHandler <-- Producer
@@ -149,30 +145,27 @@ object KafkaMetricsGroup extends KafkaMetricsGroup with Logging {
     // kafka.producer.ProducerRequestStats <-- SyncProducer
     new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestRateAndTimeMs"),
     new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestSize"),
-    new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestThrottleRateAndTimeMs")
-  )
+    new MetricName("kafka.producer", "ProducerRequestMetrics", "ProducerRequestThrottleRateAndTimeMs"))
 
   private def toMBeanName(tags: collection.Map[String, String]): Option[String] = {
     val filteredTags = tags.filter { case (_, tagValue) => tagValue != "" }
     if (filteredTags.nonEmpty) {
       val tagsString = filteredTags.map { case (key, value) => "%s=%s".format(key, Sanitizer.jmxSanitize(value)) }.mkString(",")
       Some(tagsString)
-    }
-    else None
+    } else None
   }
 
   private def toScope(tags: collection.Map[String, String]): Option[String] = {
-    val filteredTags = tags.filter { case (_, tagValue) => tagValue != ""}
+    val filteredTags = tags.filter { case (_, tagValue) => tagValue != "" }
     if (filteredTags.nonEmpty) {
       // convert dot to _ since reporters like Graphite typically use dot to represent hierarchy
       val tagsString = filteredTags
         .toList.sortWith((t1, t2) => t1._1 < t2._1)
-        .map { case (key, value) => "%s.%s".format(key, value.replaceAll("\\.", "_"))}
+        .map { case (key, value) => "%s.%s".format(key, value.replaceAll("\\.", "_")) }
         .mkString(".")
 
       Some(tagsString)
-    }
-    else None
+    } else None
   }
 
   @deprecated("This method has been deprecated and will be removed in a future release.", "0.11.0.0")

@@ -13,22 +13,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.zk
 
 import java.util.Properties
 
-import kafka.admin.{AdminOperationException, AdminUtils, BrokerMetadata, RackAwareMode}
+import kafka.admin.{ AdminOperationException, AdminUtils, BrokerMetadata, RackAwareMode }
 import kafka.common.TopicAlreadyMarkedForDeletionException
 import kafka.log.LogConfig
-import kafka.server.{ConfigEntityName, ConfigType, DynamicConfig}
+import kafka.server.{ ConfigEntityName, ConfigType, DynamicConfig }
 import kafka.utils._
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors._
 import org.apache.kafka.common.internals.Topic
 import org.apache.zookeeper.KeeperException.NodeExistsException
 
-import scala.collection.{Map, Seq}
+import scala.collection.{ Map, Seq }
 
 /**
  * Provides admin related methods for interacting with ZooKeeper.
@@ -46,11 +46,12 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
    * @param topicConfig  topic configs
    * @param rackAwareMode
    */
-  def createTopic(topic: String,
-                  partitions: Int,
-                  replicationFactor: Int,
-                  topicConfig: Properties = new Properties,
-                  rackAwareMode: RackAwareMode = RackAwareMode.Enforced) {
+  def createTopic(
+    topic: String,
+    partitions: Int,
+    replicationFactor: Int,
+    topicConfig: Properties = new Properties,
+    rackAwareMode: RackAwareMode = RackAwareMode.Enforced) {
     val brokerMetadatas = getBrokerMetadatas(rackAwareMode)
     val replicaAssignment = AdminUtils.assignReplicasToBrokers(brokerMetadatas, partitions, replicationFactor)
     createOrUpdateTopicPartitionAssignmentPathInZK(topic, replicaAssignment, topicConfig)
@@ -62,8 +63,9 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
    * @param brokerList
    * @return
    */
-  def getBrokerMetadatas(rackAwareMode: RackAwareMode = RackAwareMode.Enforced,
-                         brokerList: Option[Seq[Int]] = None): Seq[BrokerMetadata] = {
+  def getBrokerMetadatas(
+    rackAwareMode: RackAwareMode = RackAwareMode.Enforced,
+    brokerList: Option[Seq[Int]] = None): Seq[BrokerMetadata] = {
     val allBrokers = zkClient.getAllBrokersInCluster
     val brokers = brokerList.map(brokerIds => allBrokers.filter(b => brokerIds.contains(b.id))).getOrElse(allBrokers)
     val brokersWithRack = brokers.filter(_.rack.nonEmpty)
@@ -87,10 +89,11 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
    * @param config
    * @param update
    */
-  def createOrUpdateTopicPartitionAssignmentPathInZK(topic: String,
-                                                     partitionReplicaAssignment: Map[Int, Seq[Int]],
-                                                     config: Properties = new Properties,
-                                                     update: Boolean = false) {
+  def createOrUpdateTopicPartitionAssignmentPathInZK(
+    topic: String,
+    partitionReplicaAssignment: Map[Int, Seq[Int]],
+    config: Properties = new Properties,
+    update: Boolean = false) {
     validateCreateOrUpdateTopic(topic, partitionReplicaAssignment, config, update)
 
     // Configs only matter if a topic is being created. Changing configs via AlterTopic is not supported
@@ -110,10 +113,11 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
    * @param config
    * @param update
    */
-  def validateCreateOrUpdateTopic(topic: String,
-                                  partitionReplicaAssignment: Map[Int, Seq[Int]],
-                                  config: Properties,
-                                  update: Boolean): Unit = {
+  def validateCreateOrUpdateTopic(
+    topic: String,
+    partitionReplicaAssignment: Map[Int, Seq[Int]],
+    config: Properties,
+    update: Boolean): Unit = {
     // validate arguments
     Topic.validate(topic)
 
@@ -138,8 +142,7 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
 
     partitionReplicaAssignment.values.foreach(reps =>
       if (reps.size != reps.toSet.size)
-        throw new InvalidReplicaAssignmentException("Duplicate replica assignment found: " + partitionReplicaAssignment)
-    )
+        throw new InvalidReplicaAssignmentException("Duplicate replica assignment found: " + partitionReplicaAssignment))
 
     // Configs only matter if a topic is being created. Changing configs via AlterTopic is not supported
     if (!update)
@@ -148,7 +151,7 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
 
   private def writeTopicPartitionAssignment(topic: String, replicaAssignment: Map[Int, Seq[Int]], update: Boolean) {
     try {
-      val assignment = replicaAssignment.map { case (partitionId, replicas) => (new TopicPartition(topic,partitionId), replicas) }.toMap
+      val assignment = replicaAssignment.map { case (partitionId, replicas) => (new TopicPartition(topic, partitionId), replicas) }.toMap
 
       if (!update) {
         info("Topic creation " + assignment)
@@ -164,7 +167,6 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
     }
   }
 
-
   /**
    * Creates a delete path for a given topic
    * @param topic
@@ -177,30 +179,32 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
         case _: NodeExistsException => throw new TopicAlreadyMarkedForDeletionException(
           "topic %s is already marked for deletion".format(topic))
         case e: Throwable => throw new AdminOperationException(e.getMessage)
-       }
+      }
     } else {
       throw new UnknownTopicOrPartitionException(s"Topic `$topic` to delete does not exist")
     }
   }
 
   /**
-  * Add partitions to existing topic with optional replica assignment
-  *
-  * @param topic Topic for adding partitions to
-  * @param existingAssignment A map from partition id to its assigned replicas
-  * @param allBrokers All brokers in the cluster
-  * @param numPartitions Number of partitions to be set
-  * @param replicaAssignment Manual replica assignment, or none
-  * @param validateOnly If true, validate the parameters without actually adding the partitions
-  * @return the updated replica assignment
-  */
-  def addPartitions(topic: String,
-                    existingAssignment: Map[Int, Seq[Int]],
-                    allBrokers: Seq[BrokerMetadata],
-                    numPartitions: Int = 1,
-                    replicaAssignment: Option[Map[Int, Seq[Int]]] = None,
-                    validateOnly: Boolean = false): Map[Int, Seq[Int]] = {
-    val existingAssignmentPartition0 = existingAssignment.getOrElse(0,
+   * Add partitions to existing topic with optional replica assignment
+   *
+   * @param topic Topic for adding partitions to
+   * @param existingAssignment A map from partition id to its assigned replicas
+   * @param allBrokers All brokers in the cluster
+   * @param numPartitions Number of partitions to be set
+   * @param replicaAssignment Manual replica assignment, or none
+   * @param validateOnly If true, validate the parameters without actually adding the partitions
+   * @return the updated replica assignment
+   */
+  def addPartitions(
+    topic: String,
+    existingAssignment: Map[Int, Seq[Int]],
+    allBrokers: Seq[BrokerMetadata],
+    numPartitions: Int = 1,
+    replicaAssignment: Option[Map[Int, Seq[Int]]] = None,
+    validateOnly: Boolean = false): Map[Int, Seq[Int]] = {
+    val existingAssignmentPartition0 = existingAssignment.getOrElse(
+      0,
       throw new AdminOperationException(
         s"Unexpected existing replica assignment for topic '$topic', partition id 0 is missing. " +
           s"Assignment: $existingAssignment"))
@@ -233,24 +237,26 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
 
   }
 
-  private def validateReplicaAssignment(replicaAssignment: Map[Int, Seq[Int]],
-                                        expectedReplicationFactor: Int,
-                                        availableBrokerIds: Set[Int]): Unit = {
+  private def validateReplicaAssignment(
+    replicaAssignment: Map[Int, Seq[Int]],
+    expectedReplicationFactor: Int,
+    availableBrokerIds: Set[Int]): Unit = {
 
-    replicaAssignment.foreach { case (partitionId, replicas) =>
-      if (replicas.isEmpty)
-        throw new InvalidReplicaAssignmentException(
-          s"Cannot have replication factor of 0 for partition id $partitionId.")
-      if (replicas.size != replicas.toSet.size)
-        throw new InvalidReplicaAssignmentException(
-          s"Duplicate brokers not allowed in replica assignment: " +
-            s"${replicas.mkString(", ")} for partition id $partitionId.")
-      if (!replicas.toSet.subsetOf(availableBrokerIds))
-        throw new BrokerNotAvailableException(
-          s"Some brokers specified for partition id $partitionId are not available. " +
-            s"Specified brokers: ${replicas.mkString(", ")}, " +
-            s"available brokers: ${availableBrokerIds.mkString(", ")}.")
-      partitionId -> replicas.size
+    replicaAssignment.foreach {
+      case (partitionId, replicas) =>
+        if (replicas.isEmpty)
+          throw new InvalidReplicaAssignmentException(
+            s"Cannot have replication factor of 0 for partition id $partitionId.")
+        if (replicas.size != replicas.toSet.size)
+          throw new InvalidReplicaAssignmentException(
+            s"Duplicate brokers not allowed in replica assignment: " +
+              s"${replicas.mkString(", ")} for partition id $partitionId.")
+        if (!replicas.toSet.subsetOf(availableBrokerIds))
+          throw new BrokerNotAvailableException(
+            s"Some brokers specified for partition id $partitionId are not available. " +
+              s"Specified brokers: ${replicas.mkString(", ")}, " +
+              s"available brokers: ${availableBrokerIds.mkString(", ")}.")
+        partitionId -> replicas.size
     }
     val badRepFactors = replicaAssignment.collect {
       case (partition, replicas) if replicas.size != expectedReplicationFactor => partition -> replicas.size
@@ -344,18 +350,18 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
    *                 existing configs need to be deleted, it should be done prior to invoking this API
    *
    */
-   def changeTopicConfig(topic: String, configs: Properties): Unit = {
+  def changeTopicConfig(topic: String, configs: Properties): Unit = {
     validateTopicConfig(topic, configs)
     changeEntityConfig(ConfigType.Topic, topic, configs)
   }
 
   /**
-    * Override the broker config on some set of brokers. These overrides will be persisted between sessions, and will
-    * override any defaults entered in the broker's config files
-    *
-    * @param brokers: The list of brokers to apply config changes to
-    * @param configs: The config to change, as properties
-    */
+   * Override the broker config on some set of brokers. These overrides will be persisted between sessions, and will
+   * override any defaults entered in the broker's config files
+   *
+   * @param brokers: The list of brokers to apply config changes to
+   * @param configs: The config to change, as properties
+   */
   def changeBrokerConfig(brokers: Seq[Int], configs: Properties): Unit = {
     validateBrokerConfig(configs)
     brokers.foreach {
@@ -364,12 +370,12 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
   }
 
   /**
-    * Override a broker override or broker default config. These overrides will be persisted between sessions, and will
-    * override any defaults entered in the broker's config files
-    *
-    * @param broker: The broker to apply config changes to or None to update dynamic default configs
-    * @param configs: The config to change, as properties
-    */
+   * Override a broker override or broker default config. These overrides will be persisted between sessions, and will
+   * override any defaults entered in the broker's config files
+   *
+   * @param broker: The broker to apply config changes to or None to update dynamic default configs
+   * @param configs: The config to change, as properties
+   */
   def changeBrokerConfig(broker: Option[Int], configs: Properties): Unit = {
     validateBrokerConfig(configs)
     val entityName = broker.map(_.toString).getOrElse(ConfigEntityName.Default)
@@ -377,10 +383,10 @@ class AdminZkClient(zkClient: KafkaZkClient) extends Logging {
   }
 
   /**
-    * Validate dynamic broker configs. Since broker configs may contain custom configs, the validation
-    * only verifies that the provided config does not contain any static configs.
-    * @param configs configs to validate
-    */
+   * Validate dynamic broker configs. Since broker configs may contain custom configs, the validation
+   * only verifies that the provided config does not contain any static configs.
+   * @param configs configs to validate
+   */
   def validateBrokerConfig(configs: Properties): Unit = {
     DynamicConfig.Broker.validate(configs)
   }

@@ -39,17 +39,17 @@ object Acl {
    * @param bytes of acls json string
    *
    * <p>
-      {
-        "version": 1,
-        "acls": [
-          {
-            "host":"host1",
-            "permissionType": "Deny",
-            "operation": "Read",
-            "principal": "User:alice"
-          }
-        ]
-      }
+   * {
+   * "version": 1,
+   * "acls": [
+   * {
+   * "host":"host1",
+   * "permissionType": "Deny",
+   * "operation": "Read",
+   * "principal": "User:alice"
+   * }
+   * ]
+   * }
    * </p>
    *
    * @return
@@ -93,7 +93,8 @@ case class Acl(principal: KafkaPrincipal, permissionType: PermissionType, host: 
    * @return Map representation of the Acl.
    */
   def toMap(): Map[String, Any] = {
-    Map(Acl.PrincipalKey -> principal.toString,
+    Map(
+      Acl.PrincipalKey -> principal.toString,
       Acl.PermissionTypeKey -> permissionType.name,
       Acl.OperationKey -> operation.name,
       Acl.HostsKey -> host)

@@ -13,13 +13,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.utils
 
 import java.nio.charset.StandardCharsets
-import java.security.{AlgorithmParameters, NoSuchAlgorithmException, SecureRandom}
+import java.security.{ AlgorithmParameters, NoSuchAlgorithmException, SecureRandom }
 import java.security.spec.AlgorithmParameterSpec
-import javax.crypto.{Cipher, SecretKeyFactory}
+import javax.crypto.{ Cipher, SecretKeyFactory }
 import javax.crypto.spec._
 
 import kafka.utils.PasswordEncoder._
@@ -41,25 +41,26 @@ object PasswordEncoder {
 }
 
 /**
-  * Password encoder and decoder implementation. Encoded passwords are persisted as a CSV map
-  * containing the encoded password in base64 and along with the properties used for encryption.
-  *
-  * @param secret The secret used for encoding and decoding
-  * @param keyFactoryAlgorithm  Key factory algorithm if configured. By default, PBKDF2WithHmacSHA512 is
-  *                             used if available, PBKDF2WithHmacSHA1 otherwise.
-  * @param cipherAlgorithm Cipher algorithm used for encoding.
-  * @param keyLength Key length used for encoding. This should be valid for the specified algorithms.
-  * @param iterations Iteration count used for encoding.
-  *
-  * The provided `keyFactoryAlgorithm`, 'cipherAlgorithm`, `keyLength` and `iterations` are used for encoding passwords.
-  * The values used for encoding are stored along with the encoded password and the stored values are used for decoding.
-  *
-  */
-class PasswordEncoder(secret: Password,
-                      keyFactoryAlgorithm: Option[String],
-                      cipherAlgorithm: String,
-                      keyLength: Int,
-                      iterations: Int) extends Logging {
+ * Password encoder and decoder implementation. Encoded passwords are persisted as a CSV map
+ * containing the encoded password in base64 and along with the properties used for encryption.
+ *
+ * @param secret The secret used for encoding and decoding
+ * @param keyFactoryAlgorithm  Key factory algorithm if configured. By default, PBKDF2WithHmacSHA512 is
+ *                             used if available, PBKDF2WithHmacSHA1 otherwise.
+ * @param cipherAlgorithm Cipher algorithm used for encoding.
+ * @param keyLength Key length used for encoding. This should be valid for the specified algorithms.
+ * @param iterations Iteration count used for encoding.
+ *
+ * The provided `keyFactoryAlgorithm`, 'cipherAlgorithm`, `keyLength` and `iterations` are used for encoding passwords.
+ * The values used for encoding are stored along with the encoded password and the stored values are used for decoding.
+ *
+ */
+class PasswordEncoder(
+  secret: Password,
+  keyFactoryAlgorithm: Option[String],
+  cipherAlgorithm: String,
+  keyLength: Int,
+  iterations: Int) extends Logging {
 
   private val secureRandom = new SecureRandom
   private val cipherParamsEncoder = cipherParamsInstance(cipherAlgorithm)
@@ -79,8 +80,7 @@ class PasswordEncoder(secret: Password,
       SaltProp -> base64Encode(salt),
       IterationsProp -> iterations.toString,
       EncyrptedPasswordProp -> base64Encode(encryptedPassword),
-      PasswordLengthProp -> password.value.length
-    ) ++ cipherParamsEncoder.toMap(cipher.getParameters)
+      PasswordLengthProp -> password.value.length) ++ cipherParamsEncoder.toMap(cipher.getParameters)
     encryptedMap.map { case (k, v) => s"$k:$v" }.mkString(",")
   }
 
@@ -120,10 +120,11 @@ class PasswordEncoder(secret: Password,
     }
   }
 
-  private def secretKeySpec(keyFactory: SecretKeyFactory,
-                            cipherAlg: String,
-                            keyLength: Int,
-                            salt: Array[Byte], iterations: Int): SecretKeySpec = {
+  private def secretKeySpec(
+    keyFactory: SecretKeyFactory,
+    cipherAlg: String,
+    keyLength: Int,
+    salt: Array[Byte], iterations: Int): SecretKeySpec = {
     val keySpec = new PBEKeySpec(secret.value.toCharArray, salt, iterations, keyLength)
     val algorithm = if (cipherAlg.indexOf('/') > 0) cipherAlg.substring(0, cipherAlg.indexOf('/')) else cipherAlg
     new SecretKeySpec(keyFactory.generateSecret(keySpec).getEncoded, algorithm)
@@ -163,8 +164,9 @@ class PasswordEncoder(secret: Password,
     def toMap(cipherParams: AlgorithmParameters): Map[String, String] = {
       if (cipherParams != null) {
         val spec = cipherParams.getParameterSpec(classOf[GCMParameterSpec])
-        Map(InitializationVectorProp -> base64Encode(spec.getIV),
-            "authenticationTagLength" -> spec.getTLen.toString)
+        Map(
+          InitializationVectorProp -> base64Encode(spec.getIV),
+          "authenticationTagLength" -> spec.getTLen.toString)
       } else
         throw new IllegalStateException("Could not determine initialization vector for cipher")
     }

@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.producer.async
 
 import kafka.producer.KeyedMessage
@@ -22,16 +22,16 @@ import kafka.producer.KeyedMessage
  * Handler that dispatches the batched data from the queue.
  */
 @deprecated("This trait has been deprecated and will be removed in a future release.", "0.10.0.0")
-trait EventHandler[K,V] {
+trait EventHandler[K, V] {
 
   /**
    * Callback to dispatch the batched data and send it to a Kafka server
    * @param events the data sent to the producer
-  */
-  def handle(events: Seq[KeyedMessage[K,V]])
+   */
+  def handle(events: Seq[KeyedMessage[K, V]])
 
   /**
    * Cleans up and shuts down the event handler
-  */
+   */
   def close(): Unit
 }

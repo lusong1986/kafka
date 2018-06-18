@@ -13,12 +13,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.tools
 
 import joptsimple.OptionParser
-
 
 class PerfConfig(args: Array[String]) {
   val parser = new OptionParser(false)

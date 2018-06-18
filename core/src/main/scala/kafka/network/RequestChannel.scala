@@ -22,15 +22,15 @@ import java.nio.ByteBuffer
 import java.util.concurrent._
 
 import com.typesafe.scalalogging.Logger
-import com.yammer.metrics.core.{Gauge, Meter}
+import com.yammer.metrics.core.{ Gauge, Meter }
 import kafka.metrics.KafkaMetricsGroup
-import kafka.utils.{Logging, NotNothing}
+import kafka.utils.{ Logging, NotNothing }
 import org.apache.kafka.common.memory.MemoryPool
 import org.apache.kafka.common.network.Send
-import org.apache.kafka.common.protocol.{ApiKeys, Errors}
+import org.apache.kafka.common.protocol.{ ApiKeys, Errors }
 import org.apache.kafka.common.requests._
 import org.apache.kafka.common.security.auth.KafkaPrincipal
-import org.apache.kafka.common.utils.{Sanitizer, Time}
+import org.apache.kafka.common.utils.{ Sanitizer, Time }
 
 import scala.collection.mutable
 import scala.collection.JavaConverters._
@@ -57,23 +57,24 @@ object RequestChannel extends Logging {
     private val metricsMap = mutable.Map[String, RequestMetrics]()
 
     (ApiKeys.values.toSeq.map(_.name) ++
-        Seq(RequestMetrics.consumerFetchMetricName, RequestMetrics.followFetchMetricName)).foreach { name =>
-      metricsMap.put(name, new RequestMetrics(name))
-    }
+      Seq(RequestMetrics.consumerFetchMetricName, RequestMetrics.followFetchMetricName)).foreach { name =>
+        metricsMap.put(name, new RequestMetrics(name))
+      }
 
     def apply(metricName: String) = metricsMap(metricName)
 
     def close(): Unit = {
-       metricsMap.values.foreach(_.removeMetrics())
+      metricsMap.values.foreach(_.removeMetrics())
     }
   }
 
-  class Request(val processor: Int,
-                val context: RequestContext,
-                val startTimeNanos: Long,
-                memoryPool: MemoryPool,
-                @volatile private var buffer: ByteBuffer,
-                metrics: RequestChannel.Metrics) extends BaseRequest {
+  class Request(
+    val processor: Int,
+    val context: RequestContext,
+    val startTimeNanos: Long,
+    memoryPool: MemoryPool,
+    @volatile private var buffer: ByteBuffer,
+    metrics: RequestChannel.Metrics) extends BaseRequest {
     // These need to be volatile because the readers are in the network thread and the writers are in the request
     // handler threads or the purgatory threads
     @volatile var requestDequeueTimeNanos = -1L
@@ -151,10 +152,8 @@ object RequestChannel extends Logging {
           val isFromFollower = body[FetchRequest].isFromFollower
           Seq(
             if (isFromFollower) RequestMetrics.followFetchMetricName
-            else RequestMetrics.consumerFetchMetricName
-          )
-        }
-        else Seq.empty
+            else RequestMetrics.consumerFetchMetricName)
+        } else Seq.empty
       val metricNames = fetchMetricNames :+ header.apiKey.name
       metricNames.foreach { metricName =>
         val m = metrics(metricName)
@@ -227,7 +226,7 @@ object RequestChannel extends Logging {
 
   /** responseAsString should only be defined if request logging is enabled */
   class Response(val request: Request, val responseSend: Option[Send], val responseAction: ResponseAction,
-                 val responseAsString: Option[String]) {
+    val responseAsString: Option[String]) {
     request.responseCompleteTimeNanos = Time.SYSTEM.nanoseconds
     if (request.apiLocalCompleteTimeNanos == -1L) request.apiLocalCompleteTimeNanos = Time.SYSTEM.nanoseconds
 
@@ -250,11 +249,11 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
   private val processors = new ConcurrentHashMap[Int, Processor]()
 
   newGauge(RequestQueueSizeMetric, new Gauge[Int] {
-      def value = requestQueue.size
+    def value = requestQueue.size
   })
 
-  newGauge(ResponseQueueSizeMetric, new Gauge[Int]{
-    def value = processors.values.asScala.foldLeft(0) {(total, processor) =>
+  newGauge(ResponseQueueSizeMetric, new Gauge[Int] {
+    def value = processors.values.asScala.foldLeft(0) { (total, processor) =>
       total + processor.responseQueueSize
     }
   })
@@ -263,12 +262,12 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     if (processors.putIfAbsent(processor.id, processor) != null)
       warn(s"Unexpected processor with processorId ${processor.id}")
 
-    newGauge(ResponseQueueSizeMetric,
+    newGauge(
+      ResponseQueueSizeMetric,
       new Gauge[Int] {
         def value = processor.responseQueueSize
       },
-      Map(ProcessorMetricTag -> processor.id.toString)
-    )
+      Map(ProcessorMetricTag -> processor.id.toString))
   }
 
   def removeProcessor(processorId: Int): Unit = {
@@ -313,8 +312,9 @@ class RequestChannel(val queueSize: Int) extends KafkaMetricsGroup {
     requestQueue.take()
 
   def updateErrorMetrics(apiKey: ApiKeys, errors: collection.Map[Errors, Integer]) {
-    errors.foreach { case (error, count) =>
-      metrics(apiKey.name).markErrorMeter(error, count)
+    errors.foreach {
+      case (error, count) =>
+        metrics(apiKey.name).markErrorMeter(error, count)
     }
   }
 
@@ -397,7 +397,7 @@ class RequestMetrics(name: String) extends KafkaMetricsGroup {
       else {
         synchronized {
           if (meter == null)
-             meter = newMeter(ErrorsPerSec, "requests", TimeUnit.SECONDS, tags)
+            meter = newMeter(ErrorsPerSec, "requests", TimeUnit.SECONDS, tags)
           meter
         }
       }

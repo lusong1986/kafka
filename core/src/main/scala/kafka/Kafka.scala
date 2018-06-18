@@ -20,14 +20,21 @@ package kafka
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
-import sun.misc.{ Signal, SignalHandler }
-import joptsimple.OptionParser
-import kafka.utils.Implicits._
-import kafka.server.{ KafkaServer, KafkaServerStartable }
-import kafka.utils.{ CommandLineUtils, Exit, Logging }
-import org.apache.kafka.common.utils.{ OperatingSystem, Utils }
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.mapAsScalaConcurrentMapConverter
 
-import scala.collection.JavaConverters._
+import org.apache.kafka.common.utils.OperatingSystem
+import org.apache.kafka.common.utils.Utils
+
+import joptsimple.OptionParser
+import kafka.server.KafkaServer
+import kafka.server.KafkaServerStartable
+import kafka.utils.CommandLineUtils
+import kafka.utils.Exit
+import kafka.utils.Implicits.PropertiesOps
+import kafka.utils.Logging
+import sun.misc.Signal
+import sun.misc.SignalHandler
 
 object Kafka extends Logging {
 

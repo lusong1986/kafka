@@ -13,27 +13,27 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.zk
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Properties
 
-import kafka.api.{ApiVersion, KAFKA_0_10_0_IV1, LeaderAndIsr}
-import kafka.cluster.{Broker, EndPoint}
+import kafka.api.{ ApiVersion, KAFKA_0_10_0_IV1, LeaderAndIsr }
+import kafka.cluster.{ Broker, EndPoint }
 import kafka.common.KafkaException
-import kafka.controller.{IsrChangeNotificationHandler, LeaderIsrAndControllerEpoch}
+import kafka.controller.{ IsrChangeNotificationHandler, LeaderIsrAndControllerEpoch }
 import kafka.security.auth.SimpleAclAuthorizer.VersionedAcls
-import kafka.security.auth.{Acl, Resource}
-import kafka.server.{ConfigType, DelegationTokenManager}
+import kafka.security.auth.{ Acl, Resource }
+import kafka.server.{ ConfigType, DelegationTokenManager }
 import kafka.utils.Json
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.security.auth.SecurityProtocol
-import org.apache.kafka.common.security.token.delegation.{DelegationToken, TokenInformation}
+import org.apache.kafka.common.security.token.delegation.{ DelegationToken, TokenInformation }
 import org.apache.kafka.common.utils.Time
 import org.apache.zookeeper.ZooDefs
-import org.apache.zookeeper.data.{ACL, Stat}
+import org.apache.zookeeper.data.{ ACL, Stat }
 
 import scala.collection.JavaConverters._
 import scala.collection.Seq
@@ -112,14 +112,14 @@ object BrokerIdZNode {
    * The JSON format includes a top level host and port for compatibility with older clients.
    */
   def encode(version: Int, host: String, port: Int, advertisedEndpoints: Seq[EndPoint], jmxPort: Int,
-             rack: Option[String]): Array[Byte] = {
-    val jsonMap = collection.mutable.Map(VersionKey -> version,
+    rack: Option[String]): Array[Byte] = {
+    val jsonMap = collection.mutable.Map(
+      VersionKey -> version,
       HostKey -> host,
       PortKey -> port,
       EndpointsKey -> advertisedEndpoints.map(_.connectionString).toBuffer.asJava,
       JmxPortKey -> jmxPort,
-      TimestampKey -> Time.SYSTEM.milliseconds().toString
-    )
+      TimestampKey -> Time.SYSTEM.milliseconds().toString)
     rack.foreach(rack => if (version >= 3) jsonMap += (RackKey -> rack))
 
     if (version >= 4) {
@@ -142,53 +142,53 @@ object BrokerIdZNode {
   }
 
   /**
-    * Create a BrokerInfo object from id and JSON bytes.
-    *
-    * @param id
-    * @param jsonBytes
-    *
-    * Version 1 JSON schema for a broker is:
-    * {
-    *   "version":1,
-    *   "host":"localhost",
-    *   "port":9092
-    *   "jmx_port":9999,
-    *   "timestamp":"2233345666"
-    * }
-    *
-    * Version 2 JSON schema for a broker is:
-    * {
-    *   "version":2,
-    *   "host":"localhost",
-    *   "port":9092,
-    *   "jmx_port":9999,
-    *   "timestamp":"2233345666",
-    *   "endpoints":["PLAINTEXT://host1:9092", "SSL://host1:9093"]
-    * }
-    *
-    * Version 3 JSON schema for a broker is:
-    * {
-    *   "version":3,
-    *   "host":"localhost",
-    *   "port":9092,
-    *   "jmx_port":9999,
-    *   "timestamp":"2233345666",
-    *   "endpoints":["PLAINTEXT://host1:9092", "SSL://host1:9093"],
-    *   "rack":"dc1"
-    * }
-    *
-    * Version 4 (current) JSON schema for a broker is:
-    * {
-    *   "version":4,
-    *   "host":"localhost",
-    *   "port":9092,
-    *   "jmx_port":9999,
-    *   "timestamp":"2233345666",
-    *   "endpoints":["CLIENT://host1:9092", "REPLICATION://host1:9093"],
-    *   "listener_security_protocol_map":{"CLIENT":"SSL", "REPLICATION":"PLAINTEXT"},
-    *   "rack":"dc1"
-    * }
-    */
+   * Create a BrokerInfo object from id and JSON bytes.
+   *
+   * @param id
+   * @param jsonBytes
+   *
+   * Version 1 JSON schema for a broker is:
+   * {
+   *   "version":1,
+   *   "host":"localhost",
+   *   "port":9092
+   *   "jmx_port":9999,
+   *   "timestamp":"2233345666"
+   * }
+   *
+   * Version 2 JSON schema for a broker is:
+   * {
+   *   "version":2,
+   *   "host":"localhost",
+   *   "port":9092,
+   *   "jmx_port":9999,
+   *   "timestamp":"2233345666",
+   *   "endpoints":["PLAINTEXT://host1:9092", "SSL://host1:9093"]
+   * }
+   *
+   * Version 3 JSON schema for a broker is:
+   * {
+   *   "version":3,
+   *   "host":"localhost",
+   *   "port":9092,
+   *   "jmx_port":9999,
+   *   "timestamp":"2233345666",
+   *   "endpoints":["PLAINTEXT://host1:9092", "SSL://host1:9093"],
+   *   "rack":"dc1"
+   * }
+   *
+   * Version 4 (current) JSON schema for a broker is:
+   * {
+   *   "version":4,
+   *   "host":"localhost",
+   *   "port":9092,
+   *   "jmx_port":9999,
+   *   "timestamp":"2233345666",
+   *   "endpoints":["CLIENT://host1:9092", "REPLICATION://host1:9093"],
+   *   "listener_security_protocol_map":{"CLIENT":"SSL", "REPLICATION":"PLAINTEXT"},
+   *   "rack":"dc1"
+   * }
+   */
   def decode(id: Int, jsonBytes: Array[Byte]): BrokerInfo = {
     Json.tryParseBytes(jsonBytes) match {
       case Right(js) =>
@@ -206,11 +206,11 @@ object BrokerIdZNode {
             val securityProtocol = SecurityProtocol.PLAINTEXT
             val endPoint = new EndPoint(host, port, ListenerName.forSecurityProtocol(securityProtocol), securityProtocol)
             Seq(endPoint)
-          }
-          else {
+          } else {
             val securityProtocolMap = brokerInfo.get(ListenerSecurityProtocolMapKey).map(
-              _.to[Map[String, String]].map { case (listenerName, securityProtocol) =>
-                new ListenerName(listenerName) -> SecurityProtocol.forName(securityProtocol)
+              _.to[Map[String, String]].map {
+                case (listenerName, securityProtocol) =>
+                  new ListenerName(listenerName) -> SecurityProtocol.forName(securityProtocol)
               })
             val listeners = brokerInfo(EndpointsKey).to[Seq[String]]
             listeners.map(EndPoint.createEndPoint(_, securityProtocolMap))
@@ -232,8 +232,9 @@ object TopicsZNode {
 object TopicZNode {
   def path(topic: String) = s"${TopicsZNode.path}/$topic"
   def encode(assignment: collection.Map[TopicPartition, Seq[Int]]): Array[Byte] = {
-    val assignmentJson = assignment.map { case (partition, replicas) =>
-      partition.partition.toString -> replicas.asJava
+    val assignmentJson = assignment.map {
+      case (partition, replicas) =>
+        partition.partition.toString -> replicas.asJava
     }
     Json.encodeAsBytes(Map("version" -> 1, "partitions" -> assignmentJson.asJava).asJava)
   }
@@ -242,8 +243,9 @@ object TopicZNode {
       val assignmentJson = js.asJsonObject
       val partitionsJsonOpt = assignmentJson.get("partitions").map(_.asJsonObject)
       partitionsJsonOpt.map { partitionsJson =>
-        partitionsJson.iterator.map { case (partition, replicas) =>
-          new TopicPartition(topic, partition.toInt) -> replicas.to[Seq[Int]]
+        partitionsJson.iterator.map {
+          case (partition, replicas) =>
+            new TopicPartition(topic, partition.toInt) -> replicas.to[Seq[Int]]
         }
       }
     }.map(_.toMap).getOrElse(Map.empty)
@@ -369,8 +371,9 @@ object DeleteTopicsTopicZNode {
 object ReassignPartitionsZNode {
   def path = s"${AdminZNode.path}/reassign_partitions"
   def encode(reassignment: collection.Map[TopicPartition, Seq[Int]]): Array[Byte] = {
-    val reassignmentJson = reassignment.map { case (tp, replicas) =>
-      Map("topic" -> tp.topic, "partition" -> tp.partition, "replicas" -> replicas.asJava).asJava
+    val reassignmentJson = reassignment.map {
+      case (tp, replicas) =>
+        Map("topic" -> tp.topic, "partition" -> tp.partition, "replicas" -> replicas.asJava).asJava
     }.asJava
     Json.encodeAsBytes(Map("version" -> 1, "partitions" -> reassignmentJson).asJava)
   }
@@ -392,7 +395,8 @@ object ReassignPartitionsZNode {
 object PreferredReplicaElectionZNode {
   def path = s"${AdminZNode.path}/preferred_replica_election"
   def encode(partitions: Set[TopicPartition]): Array[Byte] = {
-    val jsonMap = Map("version" -> 1,
+    val jsonMap = Map(
+      "version" -> 1,
       "partitions" -> partitions.map(tp => Map("topic" -> tp.topic, "partition" -> tp.partition).asJava).asJava)
     Json.encodeAsBytes(jsonMap.asJava)
   }
@@ -461,7 +465,7 @@ object AclChangeNotificationSequenceZNode {
   val SequenceNumberPrefix = "acl_changes_"
   def createPath = s"${AclChangeNotificationZNode.path}/$SequenceNumberPrefix"
   def deletePath(sequenceNode: String) = s"${AclChangeNotificationZNode.path}/${sequenceNode}"
-  def encode(resourceName : String): Array[Byte] = resourceName.getBytes(UTF_8)
+  def encode(resourceName: String): Array[Byte] = resourceName.getBytes(UTF_8)
   def decode(bytes: Array[Byte]): String = new String(bytes, UTF_8)
 }
 
@@ -476,7 +480,7 @@ object ClusterIdZNode {
     Json.encodeAsBytes(Map("version" -> "1", "id" -> id).asJava)
   }
 
-  def fromJson(clusterIdJson:  Array[Byte]): String = {
+  def fromJson(clusterIdJson: Array[Byte]): String = {
     Json.parseBytes(clusterIdJson).map(_.asJsonObject("id").to[String]).getOrElse {
       throw new KafkaException(s"Failed to parse the cluster id json $clusterIdJson")
     }
@@ -496,14 +500,14 @@ object DelegationTokenAuthZNode {
 }
 
 object DelegationTokenChangeNotificationZNode {
-  def path =  s"${DelegationTokenAuthZNode.path}/token_changes"
+  def path = s"${DelegationTokenAuthZNode.path}/token_changes"
 }
 
 object DelegationTokenChangeNotificationSequenceZNode {
   val SequenceNumberPrefix = "token_change_"
   def createPath = s"${DelegationTokenChangeNotificationZNode.path}/$SequenceNumberPrefix"
   def deletePath(sequenceNode: String) = s"${DelegationTokenChangeNotificationZNode.path}/${sequenceNode}"
-  def encode(tokenId : String): Array[Byte] = tokenId.getBytes(UTF_8)
+  def encode(tokenId: String): Array[Byte] = tokenId.getBytes(UTF_8)
   def decode(bytes: Array[Byte]): String = new String(bytes, UTF_8)
 }
 
@@ -512,15 +516,16 @@ object DelegationTokensZNode {
 }
 
 object DelegationTokenInfoZNode {
-  def path(tokenId: String) =  s"${DelegationTokensZNode.path}/$tokenId"
-  def encode(token: DelegationToken): Array[Byte] =  Json.encodeAsBytes(DelegationTokenManager.toJsonCompatibleMap(token).asJava)
+  def path(tokenId: String) = s"${DelegationTokensZNode.path}/$tokenId"
+  def encode(token: DelegationToken): Array[Byte] = Json.encodeAsBytes(DelegationTokenManager.toJsonCompatibleMap(token).asJava)
   def decode(bytes: Array[Byte]): Option[TokenInformation] = DelegationTokenManager.fromBytes(bytes)
 }
 
 object ZkData {
 
   // Important: it is necessary to add any new top level Zookeeper path to the Seq
-  val SecureRootPaths = Seq(AdminZNode.path,
+  val SecureRootPaths = Seq(
+    AdminZNode.path,
     BrokersZNode.path,
     ClusterZNode.path,
     ConfigZNode.path,
@@ -543,14 +548,12 @@ object ZkData {
     BrokerSequenceIdZNode.path,
     IsrChangeNotificationZNode.path,
     ProducerIdBlockZNode.path,
-    LogDirEventNotificationZNode.path
-  ) ++ ConfigType.all.map(ConfigEntityTypeZNode.path)
+    LogDirEventNotificationZNode.path) ++ ConfigType.all.map(ConfigEntityTypeZNode.path)
 
   val SensitiveRootPaths = Seq(
     ConfigEntityTypeZNode.path(ConfigType.User),
     ConfigEntityTypeZNode.path(ConfigType.Broker),
-    DelegationTokensZNode.path
-  )
+    DelegationTokensZNode.path)
 
   def sensitivePath(path: String): Boolean = {
     path != null && SensitiveRootPaths.exists(path.startsWith)

@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -30,7 +30,7 @@ object MessageSet {
   val OffsetLength = 8
   val LogOverhead = MessageSizeLength + OffsetLength
   val Empty = new ByteBufferMessageSet(ByteBuffer.allocate(0))
-  
+
   /**
    * The size of a message set containing the given messages
    */
@@ -75,7 +75,7 @@ abstract class MessageSet extends Iterable[MessageAndOffset] {
    * Provides an iterator over the message/offset pairs in this set
    */
   def iterator: Iterator[MessageAndOffset]
-  
+
   /**
    * Gives the total size of this message set in bytes
    */
@@ -95,14 +95,14 @@ abstract class MessageSet extends Iterable[MessageAndOffset] {
     builder.append(getClass.getSimpleName + "(")
     val iter = this.asRecords.batches.iterator
     var i = 0
-    while(iter.hasNext && i < 100) {
+    while (iter.hasNext && i < 100) {
       val message = iter.next
       builder.append(message)
-      if(iter.hasNext)
+      if (iter.hasNext)
         builder.append(", ")
       i += 1
     }
-    if(iter.hasNext)
+    if (iter.hasNext)
       builder.append("...")
     builder.append(")")
     builder.toString

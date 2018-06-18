@@ -20,25 +20,26 @@ package kafka.server
 import kafka.network._
 import kafka.utils._
 import kafka.metrics.KafkaMetricsGroup
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.yammer.metrics.core.Meter
 import org.apache.kafka.common.internals.FatalExitError
-import org.apache.kafka.common.utils.{KafkaThread, Time}
+import org.apache.kafka.common.utils.{ KafkaThread, Time }
 
 import scala.collection.mutable
 
 /**
  * A thread that answers kafka requests.
  */
-class KafkaRequestHandler(id: Int,
-                          brokerId: Int,
-                          val aggregateIdleMeter: Meter,
-                          val totalHandlerThreads: AtomicInteger,
-                          val requestChannel: RequestChannel,
-                          apis: KafkaApis,
-                          time: Time) extends Runnable with Logging {
+class KafkaRequestHandler(
+  id: Int,
+  brokerId: Int,
+  val aggregateIdleMeter: Meter,
+  val totalHandlerThreads: AtomicInteger,
+  val requestChannel: RequestChannel,
+  apis: KafkaApis,
+  time: Time) extends Runnable with Logging {
   this.logIdent = "[Kafka Request Handler " + id + " on Broker " + brokerId + "], "
   private val shutdownComplete = new CountDownLatch(1)
   @volatile private var stopped = false
@@ -92,11 +93,12 @@ class KafkaRequestHandler(id: Int,
 
 }
 
-class KafkaRequestHandlerPool(val brokerId: Int,
-                              val requestChannel: RequestChannel,
-                              val apis: KafkaApis,
-                              time: Time,
-                              numThreads: Int) extends Logging with KafkaMetricsGroup {
+class KafkaRequestHandlerPool(
+  val brokerId: Int,
+  val requestChannel: RequestChannel,
+  val apis: KafkaApis,
+  time: Time,
+  numThreads: Int) extends Logging with KafkaMetricsGroup {
 
   private val threadPoolSize: AtomicInteger = new AtomicInteger(numThreads)
   /* a meter to track the average free capacity of the request handlers */
@@ -230,7 +232,6 @@ class BrokerTopicStats {
       allTopicsStats.bytesOutRate.mark(value)
     }
   }
-
 
   def close(): Unit = {
     allTopicsStats.close()

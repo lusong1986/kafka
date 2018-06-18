@@ -25,7 +25,7 @@ import org.apache.kafka.common.TopicPartition
 object ReplicationUtils extends Logging {
 
   def updateLeaderAndIsr(zkClient: KafkaZkClient, partition: TopicPartition, newLeaderAndIsr: LeaderAndIsr,
-                         controllerEpoch: Int): (Boolean, Int) = {
+    controllerEpoch: Int): (Boolean, Int) = {
     debug(s"Updated ISR for $partition to ${newLeaderAndIsr.isr.mkString(",")}")
     val path = TopicPartitionStateZNode.path(partition)
     val newLeaderData = TopicPartitionStateZNode.encode(LeaderIsrAndControllerEpoch(newLeaderAndIsr, controllerEpoch))

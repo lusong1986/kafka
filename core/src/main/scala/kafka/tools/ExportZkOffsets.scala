@@ -17,14 +17,20 @@
 
 package kafka.tools
 
-import java.io.{FileOutputStream, OutputStreamWriter}
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
 
-import joptsimple._
-import kafka.utils.{CommandLineUtils, Exit, Logging, ZKGroupTopicDirs, ZkUtils}
+import scala.collection.JavaConverters.asScalaBufferConverter
+
 import org.apache.kafka.common.security.JaasUtils
 
-import scala.collection.JavaConverters._
+import joptsimple.OptionParser
+import kafka.utils.CommandLineUtils
+import kafka.utils.Exit
+import kafka.utils.Logging
+import kafka.utils.ZKGroupTopicDirs
+import kafka.utils.ZkUtils
 
 
 /**

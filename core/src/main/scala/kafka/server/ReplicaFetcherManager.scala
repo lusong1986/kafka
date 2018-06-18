@@ -22,9 +22,10 @@ import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.utils.Time
 
 class ReplicaFetcherManager(brokerConfig: KafkaConfig, protected val replicaManager: ReplicaManager, metrics: Metrics,
-                            time: Time, threadNamePrefix: Option[String] = None, quotaManager: ReplicationQuotaManager)
-      extends AbstractFetcherManager("ReplicaFetcherManager on broker " + brokerConfig.brokerId,
-        "Replica", brokerConfig.numReplicaFetchers) {
+  time: Time, threadNamePrefix: Option[String] = None, quotaManager: ReplicationQuotaManager)
+  extends AbstractFetcherManager(
+    "ReplicaFetcherManager on broker " + brokerConfig.brokerId,
+    "Replica", brokerConfig.numReplicaFetchers) {
 
   override def createFetcherThread(fetcherId: Int, sourceBroker: BrokerEndPoint): AbstractFetcherThread = {
     val prefix = threadNamePrefix.map(tp => s"${tp}:").getOrElse("")

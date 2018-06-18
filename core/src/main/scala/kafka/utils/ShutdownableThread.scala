@@ -17,12 +17,12 @@
 
 package kafka.utils
 
-import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.{ CountDownLatch, TimeUnit }
 
 import org.apache.kafka.common.internals.FatalExitError
 
 abstract class ShutdownableThread(val name: String, val isInterruptible: Boolean = true)
-        extends Thread(name) with Logging {
+  extends Thread(name) with Logging {
   this.setDaemon(false)
   this.logIdent = "[" + name + "]: "
   private val shutdownInitiated = new CountDownLatch(1)
@@ -90,7 +90,7 @@ abstract class ShutdownableThread(val name: String, val isInterruptible: Boolean
         if (isRunning)
           error("Error due to", e)
     } finally {
-       shutdownComplete.countDown()
+      shutdownComplete.countDown()
     }
     info("Stopped")
   }

@@ -17,10 +17,10 @@
 
 package kafka.tools
 
-import kafka.consumer.{ConsumerConfig, SimpleConsumer}
-import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
-import kafka.common.{KafkaException, TopicAndPartition}
-import kafka.utils.{Exit, Logging, ZKGroupTopicDirs, ZkUtils}
+import kafka.consumer.{ ConsumerConfig, SimpleConsumer }
+import kafka.api.{ OffsetRequest, PartitionOffsetRequestInfo }
+import kafka.common.{ KafkaException, TopicAndPartition }
+import kafka.utils.{ Exit, Logging, ZKGroupTopicDirs, ZkUtils }
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.security.JaasUtils
 import org.apache.kafka.common.security.auth.SecurityProtocol
@@ -37,11 +37,11 @@ object UpdateOffsetsInZK extends Logging {
   def main(args: Array[String]) {
     warn("WARNING: UpdateOffsetsInZK is deprecated and will be dropped in releases following 0.11.0.0.")
 
-    if(args.length < 3)
+    if (args.length < 3)
       usage
     val config = new ConsumerConfig(Utils.loadProps(args(1)))
     val zkUtils = ZkUtils(config.zkConnect, config.zkSessionTimeoutMs,
-        config.zkConnectionTimeoutMs, JaasUtils.isZkSecurityEnabled())
+      config.zkConnectionTimeoutMs, JaasUtils.isZkSecurityEnabled())
     args(0) match {
       case Earliest => getAndSetOffsets(zkUtils, OffsetRequest.EarliestTime, config, args(2))
       case Latest => getAndSetOffsets(zkUtils, OffsetRequest.LatestTime, config, args(2))
@@ -54,7 +54,7 @@ object UpdateOffsetsInZK extends Logging {
     var partitions: Seq[Int] = Nil
 
     partitionsPerTopicMap.get(topic) match {
-      case Some(l) =>  partitions = l.sortWith((s,t) => s < t)
+      case Some(l) => partitions = l.sortWith((s, t) => s < t)
       case _ => throw new RuntimeException("Can't find topic " + topic)
     }
 

@@ -16,13 +16,17 @@
  */
 package kafka.utils.timer
 
-import java.util.concurrent.{Delayed, TimeUnit}
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import java.util.concurrent.Delayed
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
-import kafka.utils.threadsafe
+import scala.math.Ordered
+import scala.math.max
+
 import org.apache.kafka.common.utils.Time
 
-import scala.math._
+import kafka.utils.threadsafe
 
 @threadsafe
 private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
@@ -48,7 +52,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
   }
 
   // Apply the supplied function to each of tasks in this list
-  def foreach(f: (TimerTask)=>Unit): Unit = {
+  def foreach(f: (TimerTask) => Unit): Unit = {
     synchronized {
       var entry = root.next
       while (entry ne root) {
@@ -105,7 +109,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
   }
 
   // Remove all task entries and apply the supplied function to each of them
-  def flush(f: (TimerTaskEntry)=>Unit): Unit = {
+  def flush(f: (TimerTaskEntry) => Unit): Unit = {
     synchronized {
       var head = root.next
       while (head ne root) {
@@ -125,8 +129,8 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
 
     val other = d.asInstanceOf[TimerTaskList]
 
-    if(getExpiration < other.getExpiration) -1
-    else if(getExpiration > other.getExpiration) 1
+    if (getExpiration < other.getExpiration) -1
+    else if (getExpiration > other.getExpiration) 1
     else 0
   }
 

@@ -20,49 +20,48 @@ package kafka.tools
 
 import kafka.consumer._
 import joptsimple._
-import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
+import kafka.api.{ OffsetRequest, PartitionOffsetRequestInfo }
 import kafka.common.TopicAndPartition
 import kafka.client.ClientUtils
-import kafka.utils.{CommandLineUtils, Exit, ToolsUtils}
-
+import kafka.utils.{ CommandLineUtils, Exit, ToolsUtils }
 
 object GetOffsetShell {
 
   def main(args: Array[String]): Unit = {
     val parser = new OptionParser(false)
     val brokerListOpt = parser.accepts("broker-list", "REQUIRED: The list of hostname and port of the server to connect to.")
-                           .withRequiredArg
-                           .describedAs("hostname:port,...,hostname:port")
-                           .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("hostname:port,...,hostname:port")
+      .ofType(classOf[String])
     val topicOpt = parser.accepts("topic", "REQUIRED: The topic to get offset from.")
-                           .withRequiredArg
-                           .describedAs("topic")
-                           .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("topic")
+      .ofType(classOf[String])
     val partitionOpt = parser.accepts("partitions", "comma separated list of partition ids. If not specified, it will find offsets for all partitions")
-                           .withRequiredArg
-                           .describedAs("partition ids")
-                           .ofType(classOf[String])
-                           .defaultsTo("")
+      .withRequiredArg
+      .describedAs("partition ids")
+      .ofType(classOf[String])
+      .defaultsTo("")
     val timeOpt = parser.accepts("time", "timestamp of the offsets before that")
-                           .withRequiredArg
-                           .describedAs("timestamp/-1(latest)/-2(earliest)")
-                           .ofType(classOf[java.lang.Long])
-                           .defaultsTo(-1)
+      .withRequiredArg
+      .describedAs("timestamp/-1(latest)/-2(earliest)")
+      .ofType(classOf[java.lang.Long])
+      .defaultsTo(-1)
     val nOffsetsOpt = parser.accepts("offsets", "number of offsets returned")
-                           .withRequiredArg
-                           .describedAs("count")
-                           .ofType(classOf[java.lang.Integer])
-                           .defaultsTo(1)
+      .withRequiredArg
+      .describedAs("count")
+      .ofType(classOf[java.lang.Integer])
+      .defaultsTo(1)
     val maxWaitMsOpt = parser.accepts("max-wait-ms", "The max amount of time each fetch request waits.")
-                           .withRequiredArg
-                           .describedAs("ms")
-                           .ofType(classOf[java.lang.Integer])
-                           .defaultsTo(1000)
-                           
-   if(args.length == 0)
+      .withRequiredArg
+      .describedAs("ms")
+      .ofType(classOf[java.lang.Integer])
+      .defaultsTo(1000)
+
+    if (args.length == 0)
       CommandLineUtils.printUsageAndDie(parser, "An interactive shell for getting consumer offsets.")
 
-    val options = parser.parse(args : _*)
+    val options = parser.parse(args: _*)
 
     CommandLineUtils.checkRequiredArgs(parser, options, brokerListOpt, topicOpt)
 
@@ -77,13 +76,13 @@ object GetOffsetShell {
     val maxWaitMs = options.valueOf(maxWaitMsOpt).intValue()
 
     val topicsMetadata = ClientUtils.fetchTopicMetadata(Set(topic), metadataTargetBrokers, clientId, maxWaitMs).topicsMetadata
-    if(topicsMetadata.size != 1 || !topicsMetadata.head.topic.equals(topic)) {
+    if (topicsMetadata.size != 1 || !topicsMetadata.head.topic.equals(topic)) {
       System.err.println(("Error: no valid topic metadata for topic: %s, " + " probably the topic does not exist, run ").format(topic) +
         "kafka-list-topic.sh to verify")
       Exit.exit(1)
     }
     val partitions =
-      if(partitionList == "") {
+      if (partitionList == "") {
         topicsMetadata.head.partitionsMetadata.map(_.partitionId)
       } else {
         partitionList.split(",").map(_.toInt).toSeq

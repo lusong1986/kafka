@@ -1,76 +1,101 @@
 /**
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements.  See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package kafka.server
 
 import java.util
-import java.util.{Collections, Properties}
+import java.util.Collections
+import java.util.Properties
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
-import kafka.cluster.EndPoint
-import kafka.log.{LogCleaner, LogConfig, LogManager}
-import kafka.server.DynamicBrokerConfig._
-import kafka.utils.{CoreUtils, Logging, PasswordEncoder}
-import kafka.zk.{AdminZkClient, KafkaZkClient}
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.asScalaSetConverter
+import scala.collection.JavaConverters.bufferAsJavaListConverter
+import scala.collection.JavaConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.mutableMapAsJavaMapConverter
+import scala.collection.JavaConverters.propertiesAsScalaMapConverter
+import scala.collection.JavaConverters.setAsJavaSetConverter
+import scala.collection.Map
+import scala.collection.Seq
+import scala.collection.Set
+import scala.collection.mutable
+
 import org.apache.kafka.common.Reconfigurable
-import org.apache.kafka.common.config.{ConfigDef, ConfigException, SslConfigs}
-import org.apache.kafka.common.metrics.MetricsReporter
+import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.ConfigException
+import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.config.types.Password
-import org.apache.kafka.common.network.{ListenerName, ListenerReconfigurable}
+import org.apache.kafka.common.metrics.MetricsReporter
+import org.apache.kafka.common.network.ListenerName
+import org.apache.kafka.common.network.ListenerReconfigurable
 import org.apache.kafka.common.security.authenticator.LoginManager
 import org.apache.kafka.common.utils.Utils
 
-import scala.collection._
-import scala.collection.JavaConverters._
+import kafka.cluster.EndPoint
+import kafka.log.LogCleaner
+import kafka.log.LogConfig
+import kafka.log.LogManager
+import kafka.server.DynamicBrokerConfig.AllDynamicConfigs
+import kafka.server.DynamicBrokerConfig.DynamicSecurityConfigs
+import kafka.server.DynamicBrokerConfig.ListenerConfigRegex
+import kafka.server.DynamicBrokerConfig.PerBrokerConfigs
+import kafka.server.DynamicBrokerConfig.brokerConfigSynonyms
+import kafka.server.DynamicBrokerConfig.isPasswordConfig
+import kafka.utils.CoreUtils
+import kafka.utils.Logging
+import kafka.utils.PasswordEncoder
+import kafka.zk.AdminZkClient
+import kafka.zk.KafkaZkClient
 
 /**
-  * Dynamic broker configurations are stored in ZooKeeper and may be defined at two levels:
-  * <ul>
-  *   <li>Per-broker configs persisted at <tt>/configs/brokers/{brokerId}</tt>: These can be described/altered
-  *       using AdminClient using the resource name brokerId.</li>
-  *   <li>Cluster-wide defaults persisted at <tt>/configs/brokers/&lt;default&gt;</tt>: These can be described/altered
-  *       using AdminClient using an empty resource name.</li>
-  * </ul>
-  * The order of precedence for broker configs is:
-  * <ol>
-  *   <li>DYNAMIC_BROKER_CONFIG: stored in ZK at /configs/brokers/{brokerId}</li>
-  *   <li>DYNAMIC_DEFAULT_BROKER_CONFIG: stored in ZK at /configs/brokers/&lt;default&gt;</li>
-  *   <li>STATIC_BROKER_CONFIG: properties that broker is started up with, typically from server.properties file</li>
-  *   <li>DEFAULT_CONFIG: Default configs defined in KafkaConfig</li>
-  * </ol>
-  * Log configs use topic config overrides if defined and fallback to broker defaults using the order of precedence above.
-  * Topic config overrides may use a different config name from the default broker config.
-  * See [[kafka.log.LogConfig#TopicConfigSynonyms]] for the mapping.
-  * <p>
-  * AdminClient returns all config synonyms in the order of precedence when configs are described with
-  * <code>includeSynonyms</code>. In addition to configs that may be defined with the same name at different levels,
-  * some configs have additional synonyms.
-  * </p>
-  * <ul>
-  *   <li>Listener configs may be defined using the prefix <tt>listener.name.{listenerName}.{configName}</tt>. These may be
-  *       configured as dynamic or static broker configs. Listener configs have higher precedence than the base configs
-  *       that don't specify the listener name. Listeners without a listener config use the base config. Base configs
-  *       may be defined only as STATIC_BROKER_CONFIG or DEFAULT_CONFIG and cannot be updated dynamically.<li>
-  *   <li>Some configs may be defined using multiple properties. For example, <tt>log.roll.ms</tt> and
-  *       <tt>log.roll.hours</tt> refer to the same config that may be defined in milliseconds or hours. The order of
-  *       precedence of these synonyms is described in the docs of these configs in [[kafka.server.KafkaConfig]].</li>
-  * </ul>
-  *
-  */
+ * Dynamic broker configurations are stored in ZooKeeper and may be defined at two levels:
+ * <ul>
+ *   <li>Per-broker configs persisted at <tt>/configs/brokers/{brokerId}</tt>: These can be described/altered
+ *       using AdminClient using the resource name brokerId.</li>
+ *   <li>Cluster-wide defaults persisted at <tt>/configs/brokers/&lt;default&gt;</tt>: These can be described/altered
+ *       using AdminClient using an empty resource name.</li>
+ * </ul>
+ * The order of precedence for broker configs is:
+ * <ol>
+ *   <li>DYNAMIC_BROKER_CONFIG: stored in ZK at /configs/brokers/{brokerId}</li>
+ *   <li>DYNAMIC_DEFAULT_BROKER_CONFIG: stored in ZK at /configs/brokers/&lt;default&gt;</li>
+ *   <li>STATIC_BROKER_CONFIG: properties that broker is started up with, typically from server.properties file</li>
+ *   <li>DEFAULT_CONFIG: Default configs defined in KafkaConfig</li>
+ * </ol>
+ * Log configs use topic config overrides if defined and fallback to broker defaults using the order of precedence above.
+ * Topic config overrides may use a different config name from the default broker config.
+ * See [[kafka.log.LogConfig#TopicConfigSynonyms]] for the mapping.
+ * <p>
+ * AdminClient returns all config synonyms in the order of precedence when configs are described with
+ * <code>includeSynonyms</code>. In addition to configs that may be defined with the same name at different levels,
+ * some configs have additional synonyms.
+ * </p>
+ * <ul>
+ *   <li>Listener configs may be defined using the prefix <tt>listener.name.{listenerName}.{configName}</tt>. These may be
+ *       configured as dynamic or static broker configs. Listener configs have higher precedence than the base configs
+ *       that don't specify the listener name. Listeners without a listener config use the base config. Base configs
+ *       may be defined only as STATIC_BROKER_CONFIG or DEFAULT_CONFIG and cannot be updated dynamically.<li>
+ *   <li>Some configs may be defined using multiple properties. For example, <tt>log.roll.ms</tt> and
+ *       <tt>log.roll.hours</tt> refer to the same config that may be defined in milliseconds or hours. The order of
+ *       precedence of these synonyms is described in the docs of these configs in [[kafka.server.KafkaConfig]].</li>
+ * </ul>
+ *
+ */
 object DynamicBrokerConfig {
 
   private[server] val DynamicSecurityConfigs = SslConfigs.RECONFIGURABLE_CONFIGS.asScala
@@ -83,7 +108,7 @@ object DynamicBrokerConfig {
   AllDynamicConfigs ++= Set(KafkaConfig.MetricReporterClassesProp)
   AllDynamicConfigs ++= DynamicListenerConfig.ReconfigurableConfigs
 
-  private val PerBrokerConfigs = DynamicSecurityConfigs  ++
+  private val PerBrokerConfigs = DynamicSecurityConfigs ++
     DynamicListenerConfig.ReconfigurableConfigs
   private val ListenerMechanismConfigs = Set(KafkaConfig.SaslJaasConfigProp)
 
@@ -212,8 +237,9 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
   }
 
   private def maybeCreatePasswordEncoder(secret: Option[Password]): Option[PasswordEncoder] = {
-   secret.map { secret =>
-      new PasswordEncoder(secret,
+    secret.map { secret =>
+      new PasswordEncoder(
+        secret,
         kafkaConfig.passwordEncoderKeyFactoryAlgorithm,
         kafkaConfig.passwordEncoderCipherAlgorithm,
         kafkaConfig.passwordEncoderKeyLength,
@@ -239,8 +265,9 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
     props
   }
 
-  private[server] def fromPersistentProps(persistentProps: Properties,
-                                          perBrokerConfig: Boolean): Properties = {
+  private[server] def fromPersistentProps(
+    persistentProps: Properties,
+    perBrokerConfig: Boolean): Properties = {
     val props = persistentProps.clone().asInstanceOf[Properties]
 
     // Remove all invalid configs from `props`
@@ -252,7 +279,8 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
       }
     }
     removeInvalidProps(nonDynamicConfigs(props), "Non-dynamic configs configured in ZooKeeper will be ignored")
-    removeInvalidProps(securityConfigsWithoutListenerPrefix(props),
+    removeInvalidProps(
+      securityConfigsWithoutListenerPrefix(props),
       "Security configs can be dynamically updated only using listener prefix, base configs will be ignored")
     if (!perBrokerConfig)
       removeInvalidProps(perBrokerConfigs(props), "Per-broker configs defined at default cluster level will be ignored")
@@ -281,17 +309,18 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
     val props = persistentProps.clone().asInstanceOf[Properties]
     if (props.asScala.keySet.exists(isPasswordConfig)) {
       maybeCreatePasswordEncoder(kafkaConfig.passwordEncoderOldSecret).foreach { passwordDecoder =>
-        persistentProps.asScala.filterKeys(isPasswordConfig).foreach { case (configName, value) =>
-          if (value != null) {
-            val decoded = try {
-              Some(passwordDecoder.decode(value).value)
-            } catch {
-              case _: Exception =>
-                debug(s"Dynamic password config $configName could not be decoded using old secret, new secret will be used.")
-                None
+        persistentProps.asScala.filterKeys(isPasswordConfig).foreach {
+          case (configName, value) =>
+            if (value != null) {
+              val decoded = try {
+                Some(passwordDecoder.decode(value).value)
+              } catch {
+                case _: Exception =>
+                  debug(s"Dynamic password config $configName could not be decoded using old secret, new secret will be used.")
+                  None
+              }
+              decoded.foreach { value => props.put(configName, passwordEncoder.encode(new Password(value))) }
             }
-            decoded.foreach { value => props.put(configName, passwordEncoder.encode(new Password(value))) }
-          }
         }
         adminZkClient.changeBrokerConfig(Seq(kafkaConfig.brokerId), props)
       }
@@ -305,7 +334,8 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
         throw new ConfigException(s"$errorMessage: $invalidPropNames")
     }
     checkInvalidProps(nonDynamicConfigs(props), "Cannot update these configs dynamically")
-    checkInvalidProps(securityConfigsWithoutListenerPrefix(props),
+    checkInvalidProps(
+      securityConfigsWithoutListenerPrefix(props),
       "These security configs can be dynamically updated only per-listener using the listener prefix")
     validateConfigTypes(props)
     val newProps = mutable.Map[String, String]()
@@ -314,7 +344,8 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
       overrideProps(newProps, dynamicDefaultConfigs)
       overrideProps(newProps, props.asScala)
     } else {
-      checkInvalidProps(perBrokerConfigs(props),
+      checkInvalidProps(
+        perBrokerConfigs(props),
         "Cannot update these configs at default cluster level, broker id must be specified")
       overrideProps(newProps, props.asScala)
       overrideProps(newProps, dynamicBrokerConfigs)
@@ -350,15 +381,16 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
       props.asScala
     } catch {
       case e: Exception =>
-        val invalidProps = props.asScala.filter { case (k, v) =>
-          val props1 = new Properties
-          props1.put(k, v)
-          try {
-            validateConfigTypes(props1)
-            false
-          } catch {
-            case _: Exception => true
-          }
+        val invalidProps = props.asScala.filter {
+          case (k, v) =>
+            val props1 = new Properties
+            props1.put(k, v)
+            try {
+              validateConfigTypes(props1)
+              false
+            } catch {
+              case _: Exception => true
+            }
         }
         invalidProps.foreach(props.remove)
         val configSource = if (perBrokerConfig) "broker" else "default cluster"
@@ -378,20 +410,21 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
   }
 
   /**
-    * Updates values in `props` with the new values from `propsOverride`. Synonyms of updated configs
-    * are removed from `props` to ensure that the config with the higher precedence is applied. For example,
-    * if `log.roll.ms` was defined in server.properties and `log.roll.hours` is configured dynamically,
-    * `log.roll.hours` from the dynamic configuration will be used and `log.roll.ms` will be removed from
-    * `props` (even though `log.roll.hours` is secondary to `log.roll.ms`).
-    */
+   * Updates values in `props` with the new values from `propsOverride`. Synonyms of updated configs
+   * are removed from `props` to ensure that the config with the higher precedence is applied. For example,
+   * if `log.roll.ms` was defined in server.properties and `log.roll.hours` is configured dynamically,
+   * `log.roll.hours` from the dynamic configuration will be used and `log.roll.ms` will be removed from
+   * `props` (even though `log.roll.hours` is secondary to `log.roll.ms`).
+   */
   private def overrideProps(props: mutable.Map[String, String], propsOverride: mutable.Map[String, String]): Unit = {
-    propsOverride.foreach { case (k, v) =>
-      // Remove synonyms of `k` to ensure the right precedence is applied. But disable `matchListenerOverride`
-      // so that base configs corresponding to listener configs are not removed. Base configs should not be removed
-      // since they may be used by other listeners. It is ok to retain them in `props` since base configs cannot be
-      // dynamically updated and listener-specific configs have the higher precedence.
-      brokerConfigSynonyms(k, matchListenerOverride = false).foreach(props.remove)
-      props.put(k, v)
+    propsOverride.foreach {
+      case (k, v) =>
+        // Remove synonyms of `k` to ensure the right precedence is applied. But disable `matchListenerOverride`
+        // so that base configs corresponding to listener configs are not removed. Base configs should not be removed
+        // since they may be used by other listeners. It is ok to retain them in `props` since base configs cannot be
+        // dynamically updated and listener-specific configs have the higher precedence.
+        brokerConfigSynonyms(k, matchListenerOverride = false).foreach(props.remove)
+        props.put(k, v)
     }
   }
 
@@ -447,8 +480,7 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
             error(s"Failed to update broker configuration with configs : ${newConfig.originalsFromThisConfig}", e)
           throw new ConfigException("Invalid dynamic configuration", e)
       }
-    }
-    else
+    } else
       (currentConfig, List.empty)
   }
 
@@ -456,11 +488,12 @@ class DynamicBrokerConfig(private val kafkaConfig: KafkaConfig) extends Logging 
     reconfigurableConfigs.asScala.intersect(updatedKeys).nonEmpty
   }
 
-  private def processReconfigurable(reconfigurable: Reconfigurable,
-                                    updatedConfigNames: Set[String],
-                                    allNewConfigs: util.Map[String, _],
-                                    newCustomConfigs: util.Map[String, Object],
-                                    validateOnly: Boolean): Unit = {
+  private def processReconfigurable(
+    reconfigurable: Reconfigurable,
+    updatedConfigNames: Set[String],
+    allNewConfigs: util.Map[String, _],
+    newCustomConfigs: util.Map[String, Object],
+    validateOnly: Boolean): Unit = {
     val newConfigs = new util.HashMap[String, Object]
     allNewConfigs.asScala.foreach { case (k, v) => newConfigs.put(k, v.asInstanceOf[AnyRef]) }
     newConfigs.putAll(newCustomConfigs)
@@ -513,12 +546,13 @@ class DynamicLogConfig(logManager: LogManager) extends Reconfigurable with Loggi
   override def reconfigure(configs: util.Map[String, _]): Unit = {
     val currentLogConfig = logManager.currentDefaultConfig
     val newBrokerDefaults = new util.HashMap[String, Object](currentLogConfig.originals)
-    configs.asScala.filterKeys(DynamicLogConfig.ReconfigurableConfigs.contains).foreach { case (k, v) =>
-      if (v != null) {
-        DynamicLogConfig.KafkaConfigToLogConfigName.get(k).foreach { configName =>
-          newBrokerDefaults.put(configName, v.asInstanceOf[AnyRef])
+    configs.asScala.filterKeys(DynamicLogConfig.ReconfigurableConfigs.contains).foreach {
+      case (k, v) =>
+        if (v != null) {
+          DynamicLogConfig.KafkaConfigToLogConfigName.get(k).foreach { configName =>
+            newBrokerDefaults.put(configName, v.asInstanceOf[AnyRef])
+          }
         }
-      }
     }
 
     logManager.reconfigureDefaultLogConfig(LogConfig(newBrokerDefaults))
@@ -550,18 +584,19 @@ class DynamicThreadPool(server: KafkaServer) extends BrokerReconfigurable {
   }
 
   override def validateReconfiguration(newConfig: KafkaConfig): Unit = {
-    newConfig.values.asScala.filterKeys(DynamicThreadPool.ReconfigurableConfigs.contains).foreach { case (k, v) =>
-      val newValue = v.asInstanceOf[Int]
-      val oldValue = currentValue(k)
-      if (newValue != oldValue) {
-        val errorMsg = s"Dynamic thread count update validation failed for $k=$v"
-        if (newValue <= 0)
-          throw new ConfigException(s"$errorMsg, value should be at least 1")
-        if (newValue < oldValue / 2)
-          throw new ConfigException(s"$errorMsg, value should be at least half the current value $oldValue")
-        if (newValue > oldValue * 2)
-          throw new ConfigException(s"$errorMsg, value should not be greater than double the current value $oldValue")
-      }
+    newConfig.values.asScala.filterKeys(DynamicThreadPool.ReconfigurableConfigs.contains).foreach {
+      case (k, v) =>
+        val newValue = v.asInstanceOf[Int]
+        val oldValue = currentValue(k)
+        if (newValue != oldValue) {
+          val errorMsg = s"Dynamic thread count update validation failed for $k=$v"
+          if (newValue <= 0)
+            throw new ConfigException(s"$errorMsg, value should be at least 1")
+          if (newValue < oldValue / 2)
+            throw new ConfigException(s"$errorMsg, value should be at least half the current value $oldValue")
+          if (newValue > oldValue * 2)
+            throw new ConfigException(s"$errorMsg, value should not be greater than double the current value $oldValue")
+        }
     }
   }
 
@@ -597,7 +632,8 @@ class DynamicMetricsReporters(brokerId: Int, server: KafkaServer) extends Reconf
   private val propsOverride = Map[String, AnyRef](KafkaConfig.BrokerIdProp -> brokerId.toString)
   private val currentReporters = mutable.Map[String, MetricsReporter]()
 
-  createReporters(dynamicConfig.currentKafkaConfig.getList(KafkaConfig.MetricReporterClassesProp),
+  createReporters(
+    dynamicConfig.currentKafkaConfig.getList(KafkaConfig.MetricReporterClassesProp),
     Collections.emptyMap[String, Object])
 
   private[server] def currentMetricsReporters: List[MetricsReporter] = currentReporters.values.toList
@@ -644,8 +680,9 @@ class DynamicMetricsReporters(brokerId: Int, server: KafkaServer) extends Reconf
     createReporters(added.asJava, configs)
   }
 
-  private def createReporters(reporterClasses: util.List[String],
-                              updatedConfigs: util.Map[String, _]): Unit = {
+  private def createReporters(
+    reporterClasses: util.List[String],
+    updatedConfigs: util.Map[String, _]): Unit = {
     val props = new util.HashMap[String, AnyRef]
     updatedConfigs.asScala.foreach { case (k, v) => props.put(k, v.asInstanceOf[AnyRef]) }
     propsOverride.foreach { case (k, v) => props.put(k, v) }
@@ -701,8 +738,7 @@ object DynamicListenerConfig {
     KafkaConfig.SaslKerberosTicketRenewWindowFactorProp,
     KafkaConfig.SaslKerberosTicketRenewJitterProp,
     KafkaConfig.SaslKerberosMinTimeBeforeReloginProp,
-    KafkaConfig.SaslKerberosPrincipalToLocalRulesProp
-  )
+    KafkaConfig.SaslKerberosPrincipalToLocalRulesProp)
 }
 
 class DynamicListenerConfig(server: KafkaServer) extends BrokerReconfigurable with Logging {

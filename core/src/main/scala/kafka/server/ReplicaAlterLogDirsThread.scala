@@ -1,19 +1,19 @@
 /**
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements.  See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License.  You may obtain a copy of the License at
-  *
-  *    http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package kafka.server
 
@@ -24,32 +24,33 @@ import AbstractFetcherThread.ResultWithPartitions
 import kafka.cluster.BrokerEndPoint
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.EpochEndOffset._
-import org.apache.kafka.common.requests.{EpochEndOffset, FetchResponse, FetchRequest => JFetchRequest}
+import org.apache.kafka.common.requests.{ EpochEndOffset, FetchResponse, FetchRequest => JFetchRequest }
 import ReplicaAlterLogDirsThread.FetchRequest
 import ReplicaAlterLogDirsThread.PartitionData
 import kafka.api.Request
 import kafka.server.QuotaFactory.UnboundedQuota
 import kafka.server.epoch.LeaderEpochCache
 import org.apache.kafka.common.errors.KafkaStorageException
-import org.apache.kafka.common.protocol.{ApiKeys, Errors}
-import org.apache.kafka.common.record.{FileRecords, MemoryRecords}
+import org.apache.kafka.common.protocol.{ ApiKeys, Errors }
+import org.apache.kafka.common.record.{ FileRecords, MemoryRecords }
 
 import scala.collection.JavaConverters._
-import scala.collection.{Map, Seq, Set, mutable}
+import scala.collection.{ Map, Seq, Set, mutable }
 
-
-class ReplicaAlterLogDirsThread(name: String,
-                                sourceBroker: BrokerEndPoint,
-                                brokerConfig: KafkaConfig,
-                                replicaMgr: ReplicaManager,
-                                quota: ReplicationQuotaManager,
-                                brokerTopicStats: BrokerTopicStats)
-  extends AbstractFetcherThread(name = name,
-                                clientId = name,
-                                sourceBroker = sourceBroker,
-                                fetchBackOffMs = brokerConfig.replicaFetchBackoffMs,
-                                isInterruptible = false,
-                                includeLogTruncation = true) {
+class ReplicaAlterLogDirsThread(
+  name: String,
+  sourceBroker: BrokerEndPoint,
+  brokerConfig: KafkaConfig,
+  replicaMgr: ReplicaManager,
+  quota: ReplicationQuotaManager,
+  brokerTopicStats: BrokerTopicStats)
+  extends AbstractFetcherThread(
+    name = name,
+    clientId = name,
+    sourceBroker = sourceBroker,
+    fetchBackOffMs = brokerConfig.replicaFetchBackoffMs,
+    isInterruptible = false,
+    includeLogTruncation = true) {
 
   type REQ = FetchRequest
   type PD = PartitionData
@@ -58,18 +59,19 @@ class ReplicaAlterLogDirsThread(name: String,
   private val maxBytes = brokerConfig.replicaFetchResponseMaxBytes
   private val fetchSize = brokerConfig.replicaFetchMaxBytes
 
-  private def epochCacheOpt(tp: TopicPartition): Option[LeaderEpochCache] =  replicaMgr.getReplica(tp).map(_.epochs.get)
+  private def epochCacheOpt(tp: TopicPartition): Option[LeaderEpochCache] = replicaMgr.getReplica(tp).map(_.epochs.get)
 
   def fetch(fetchRequest: FetchRequest): Seq[(TopicPartition, PartitionData)] = {
     var partitionData: Seq[(TopicPartition, FetchResponse.PartitionData)] = null
     val request = fetchRequest.underlying.build()
 
     def processResponseCallback(responsePartitionData: Seq[(TopicPartition, FetchPartitionData)]) {
-      partitionData = responsePartitionData.map { case (tp, data) =>
-        val abortedTransactions = data.abortedTransactions.map(_.asJava).orNull
-        val lastStableOffset = data.lastStableOffset.getOrElse(FetchResponse.INVALID_LAST_STABLE_OFFSET)
-        tp -> new FetchResponse.PartitionData(data.error, data.highWatermark, lastStableOffset,
-          data.logStartOffset, abortedTransactions, data.records)
+      partitionData = responsePartitionData.map {
+        case (tp, data) =>
+          val abortedTransactions = data.abortedTransactions.map(_.asJava).orNull
+          val lastStableOffset = data.lastStableOffset.getOrElse(FetchResponse.INVALID_LAST_STABLE_OFFSET)
+          tp -> new FetchResponse.PartitionData(data.error, data.highWatermark, lastStableOffset,
+            data.logStartOffset, abortedTransactions, data.records)
       }
     }
 
@@ -87,8 +89,9 @@ class ReplicaAlterLogDirsThread(name: String,
     if (partitionData == null)
       throw new IllegalStateException(s"Failed to fetch data for partitions ${request.fetchData.keySet().toArray.mkString(",")}")
 
-    partitionData.map { case (key, value) =>
-      key -> new PartitionData(value)
+    partitionData.map {
+      case (key, value) =>
+        key -> new PartitionData(value)
     }
   }
 
@@ -153,14 +156,15 @@ class ReplicaAlterLogDirsThread(name: String,
   }
 
   def fetchEpochsFromLeader(partitions: Map[TopicPartition, Int]): Map[TopicPartition, EpochEndOffset] = {
-    partitions.map { case (tp, epoch) =>
-      try {
-        tp -> new EpochEndOffset(Errors.NONE, replicaMgr.getReplicaOrException(tp).epochs.get.endOffsetFor(epoch))
-      } catch {
-        case t: Throwable =>
-          warn(s"Error when getting EpochEndOffset for $tp", t)
-          tp -> new EpochEndOffset(Errors.forException(t), UNDEFINED_EPOCH_OFFSET)
-      }
+    partitions.map {
+      case (tp, epoch) =>
+        try {
+          tp -> new EpochEndOffset(Errors.NONE, replicaMgr.getReplicaOrException(tp).epochs.get.endOffsetFor(epoch))
+        } catch {
+          case t: Throwable =>
+            warn(s"Error when getting EpochEndOffset for $tp", t)
+            tp -> new EpochEndOffset(Errors.forException(t), UNDEFINED_EPOCH_OFFSET)
+        }
     }
   }
 
@@ -168,39 +172,41 @@ class ReplicaAlterLogDirsThread(name: String,
     val fetchOffsets = scala.collection.mutable.HashMap.empty[TopicPartition, Long]
     val partitionsWithError = mutable.Set[TopicPartition]()
 
-    fetchedEpochs.foreach { case (topicPartition, epochOffset) =>
-      try {
-        val futureReplica = replicaMgr.getReplicaOrException(topicPartition, Request.FutureLocalReplicaId)
-        val partition = replicaMgr.getPartition(topicPartition).get
+    fetchedEpochs.foreach {
+      case (topicPartition, epochOffset) =>
+        try {
+          val futureReplica = replicaMgr.getReplicaOrException(topicPartition, Request.FutureLocalReplicaId)
+          val partition = replicaMgr.getPartition(topicPartition).get
 
-        if (epochOffset.hasError) {
-          info(s"Retrying leaderEpoch request for partition $topicPartition as the current replica reported an error: ${epochOffset.error}")
-          partitionsWithError += topicPartition
-        } else {
-          val fetchOffset =
-            if (epochOffset.endOffset == UNDEFINED_EPOCH_OFFSET)
-              partitionStates.stateValue(topicPartition).fetchOffset
-            else if (epochOffset.endOffset >= futureReplica.logEndOffset.messageOffset)
-              futureReplica.logEndOffset.messageOffset
-            else
-              epochOffset.endOffset
+          if (epochOffset.hasError) {
+            info(s"Retrying leaderEpoch request for partition $topicPartition as the current replica reported an error: ${epochOffset.error}")
+            partitionsWithError += topicPartition
+          } else {
+            val fetchOffset =
+              if (epochOffset.endOffset == UNDEFINED_EPOCH_OFFSET)
+                partitionStates.stateValue(topicPartition).fetchOffset
+              else if (epochOffset.endOffset >= futureReplica.logEndOffset.messageOffset)
+                futureReplica.logEndOffset.messageOffset
+              else
+                epochOffset.endOffset
 
-          partition.truncateTo(fetchOffset, isFuture = true)
-          fetchOffsets.put(topicPartition, fetchOffset)
+            partition.truncateTo(fetchOffset, isFuture = true)
+            fetchOffsets.put(topicPartition, fetchOffset)
+          }
+        } catch {
+          case e: KafkaStorageException =>
+            info(s"Failed to truncate $topicPartition", e)
+            partitionsWithError += topicPartition
         }
-      } catch {
-        case e: KafkaStorageException =>
-          info(s"Failed to truncate $topicPartition", e)
-          partitionsWithError += topicPartition
-      }
     }
     ResultWithPartitions(fetchOffsets, partitionsWithError)
   }
 
   def buildFetchRequest(partitionMap: Seq[(TopicPartition, PartitionFetchState)]): ResultWithPartitions[FetchRequest] = {
     // Only include replica in the fetch request if it is not throttled.
-    val maxPartitionOpt = partitionMap.filter { case (topicPartition, partitionFetchState) =>
-      partitionFetchState.isReadyForFetch && !quota.isQuotaExceeded
+    val maxPartitionOpt = partitionMap.filter {
+      case (topicPartition, partitionFetchState) =>
+        partitionFetchState.isReadyForFetch && !quota.isQuotaExceeded
     }.reduceLeftOption { (left, right) =>
       if ((left._1.topic > right._1.topic()) || (left._1.topic == right._1.topic() && left._1.partition() >= right._1.partition()))
         left

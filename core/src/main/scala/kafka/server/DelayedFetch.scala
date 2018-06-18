@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 
 import kafka.metrics.KafkaMetricsGroup
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.{NotLeaderForPartitionException, UnknownTopicOrPartitionException, KafkaStorageException}
+import org.apache.kafka.common.errors.{ NotLeaderForPartitionException, UnknownTopicOrPartitionException, KafkaStorageException }
 import org.apache.kafka.common.requests.FetchRequest.PartitionData
 import org.apache.kafka.common.requests.IsolationLevel
 
@@ -30,20 +30,21 @@ import scala.collection._
 case class FetchPartitionStatus(startOffsetMetadata: LogOffsetMetadata, fetchInfo: PartitionData) {
 
   override def toString = "[startOffsetMetadata: " + startOffsetMetadata + ", " +
-                          "fetchInfo: " + fetchInfo + "]"
+    "fetchInfo: " + fetchInfo + "]"
 }
 
 /**
  * The fetch metadata maintained by the delayed fetch operation
  */
-case class FetchMetadata(fetchMinBytes: Int,
-                         fetchMaxBytes: Int,
-                         hardMaxBytesLimit: Boolean,
-                         fetchOnlyLeader: Boolean,
-                         fetchOnlyCommitted: Boolean,
-                         isFromFollower: Boolean,
-                         replicaId: Int,
-                         fetchPartitionStatus: Seq[(TopicPartition, FetchPartitionStatus)]) {
+case class FetchMetadata(
+  fetchMinBytes: Int,
+  fetchMaxBytes: Int,
+  hardMaxBytesLimit: Boolean,
+  fetchOnlyLeader: Boolean,
+  fetchOnlyCommitted: Boolean,
+  isFromFollower: Boolean,
+  replicaId: Int,
+  fetchPartitionStatus: Seq[(TopicPartition, FetchPartitionStatus)]) {
 
   override def toString = "[minBytes: " + fetchMinBytes + ", " +
     "maxBytes:" + fetchMaxBytes + ", " +
@@ -56,12 +57,13 @@ case class FetchMetadata(fetchMinBytes: Int,
  * A delayed fetch operation that can be created by the replica manager and watched
  * in the fetch operation purgatory
  */
-class DelayedFetch(delayMs: Long,
-                   fetchMetadata: FetchMetadata,
-                   replicaManager: ReplicaManager,
-                   quota: ReplicaQuota,
-                   isolationLevel: IsolationLevel,
-                   responseCallback: Seq[(TopicPartition, FetchPartitionData)] => Unit)
+class DelayedFetch(
+  delayMs: Long,
+  fetchMetadata: FetchMetadata,
+  replicaManager: ReplicaManager,
+  quota: ReplicaQuota,
+  isolationLevel: IsolationLevel,
+  responseCallback: Seq[(TopicPartition, FetchPartitionData)] => Unit)
   extends DelayedOperation(delayMs) {
 
   /**
@@ -75,7 +77,7 @@ class DelayedFetch(delayMs: Long,
    *
    * Upon completion, should return whatever data is available for each valid partition
    */
-  override def tryComplete() : Boolean = {
+  override def tryComplete(): Boolean = {
     var accumulatedSize = 0
     var accumulatedThrottledSize = 0
     fetchMetadata.fetchPartitionStatus.foreach {
@@ -124,7 +126,7 @@ class DelayedFetch(delayMs: Long,
           case _: UnknownTopicOrPartitionException => // Case B
             debug("Broker no longer know of %s, satisfy %s immediately".format(topicPartition, fetchMetadata))
             return forceComplete()
-          case _: NotLeaderForPartitionException =>  // Case A
+          case _: NotLeaderForPartitionException => // Case A
             debug("Broker is no longer the leader of %s, satisfy %s immediately".format(topicPartition, fetchMetadata))
             return forceComplete()
         }
@@ -159,9 +161,10 @@ class DelayedFetch(delayMs: Long,
       quota = quota,
       isolationLevel = isolationLevel)
 
-    val fetchPartitionData = logReadResults.map { case (tp, result) =>
-      tp -> FetchPartitionData(result.error, result.highWatermark, result.leaderLogStartOffset, result.info.records,
-        result.lastStableOffset, result.info.abortedTransactions)
+    val fetchPartitionData = logReadResults.map {
+      case (tp, result) =>
+        tp -> FetchPartitionData(result.error, result.highWatermark, result.leaderLogStartOffset, result.info.records,
+          result.lastStableOffset, result.info.abortedTransactions)
     }
 
     responseCallback(fetchPartitionData)

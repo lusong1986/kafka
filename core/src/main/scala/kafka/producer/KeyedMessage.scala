@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.producer
 
@@ -22,23 +22,23 @@ package kafka.producer
  * If a partition key is provided it will override the key for the purpose of partitioning but will not be stored.
  */
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerRecord instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerRecord instead.", "0.10.0.0")
 case class KeyedMessage[K, V](topic: String, key: K, partKey: Any, message: V) {
-  if(topic == null)
+  if (topic == null)
     throw new IllegalArgumentException("Topic cannot be null.")
-  
+
   def this(topic: String, message: V) = this(topic, null.asInstanceOf[K], null, message)
-  
+
   def this(topic: String, key: K, message: V) = this(topic, key, key, message)
-  
+
   def partitionKey = {
-    if(partKey != null)
+    if (partKey != null)
       partKey
-    else if(hasKey)
+    else if (hasKey)
       key
     else
-      null  
+      null
   }
-  
+
   def hasKey = key != null
 }

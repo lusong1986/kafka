@@ -21,15 +21,15 @@ import java.util
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
 import com.typesafe.scalalogging.Logger
-import kafka.common.{NotificationHandler, ZkNodeChangeNotificationListener}
+import kafka.common.{ NotificationHandler, ZkNodeChangeNotificationListener }
 import kafka.network.RequestChannel.Session
 import kafka.security.auth.SimpleAclAuthorizer.VersionedAcls
 import kafka.server.KafkaConfig
-import kafka.utils.CoreUtils.{inReadLock, inWriteLock}
+import kafka.utils.CoreUtils.{ inReadLock, inWriteLock }
 import kafka.utils._
-import kafka.zk.{AclChangeNotificationSequenceZNode, AclChangeNotificationZNode, KafkaZkClient}
+import kafka.zk.{ AclChangeNotificationSequenceZNode, AclChangeNotificationZNode, KafkaZkClient }
 import org.apache.kafka.common.security.auth.KafkaPrincipal
-import org.apache.kafka.common.utils.{SecurityUtils, Time}
+import org.apache.kafka.common.utils.{ SecurityUtils, Time }
 
 import scala.collection.JavaConverters._
 import scala.util.Random
@@ -192,8 +192,9 @@ class SimpleAclAuthorizer extends Authorizer with Logging {
     inReadLock(lock) {
       aclCache.mapValues { versionedAcls =>
         versionedAcls.acls.filter(_.principal == principal)
-      }.filter { case (_, acls) =>
-        acls.nonEmpty
+      }.filter {
+        case (_, acls) =>
+          acls.nonEmpty
       }.toMap
     }
   }
@@ -209,7 +210,7 @@ class SimpleAclAuthorizer extends Authorizer with Logging {
     if (zkClient != null) zkClient.close()
   }
 
-  private def loadCache()  {
+  private def loadCache() {
     inWriteLock(lock) {
       val resourceTypes = zkClient.getResourceTypes()
       for (rType <- resourceTypes) {
@@ -234,15 +235,15 @@ class SimpleAclAuthorizer extends Authorizer with Logging {
   }
 
   /**
-    * Safely updates the resources ACLs by ensuring reads and writes respect the expected zookeeper version.
-    * Continues to retry until it successfully updates zookeeper.
-    *
-    * Returns a boolean indicating if the content of the ACLs was actually changed.
-    *
-    * @param resource the resource to change ACLs for
-    * @param getNewAcls function to transform existing acls to new ACLs
-    * @return boolean indicating if a change was made
-    */
+   * Safely updates the resources ACLs by ensuring reads and writes respect the expected zookeeper version.
+   * Continues to retry until it successfully updates zookeeper.
+   *
+   * Returns a boolean indicating if the content of the ACLs was actually changed.
+   *
+   * @param resource the resource to change ACLs for
+   * @param getNewAcls function to transform existing acls to new ACLs
+   * @return boolean indicating if a change was made
+   */
   private def updateResourceAcls(resource: Resource)(getNewAcls: Set[Acl] => Set[Acl]): Boolean = {
     var currentVersionedAcls =
       if (aclCache.contains(resource))
@@ -273,7 +274,7 @@ class SimpleAclAuthorizer extends Authorizer with Logging {
       }
     }
 
-    if(!writeComplete)
+    if (!writeComplete)
       throw new IllegalStateException(s"Failed to update ACLs for $resource after trying a maximum of $maxUpdateRetries times")
 
     if (newVersionedAcls.acls != currentVersionedAcls.acls) {

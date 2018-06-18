@@ -13,13 +13,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.producer.async
 
 import kafka.utils.VerifiableProperties
 
 @deprecated("This trait has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 trait AsyncProducerConfig {
   val props: VerifiableProperties
 
@@ -42,8 +42,8 @@ trait AsyncProducerConfig {
 
   /** the serializer class for values */
   val serializerClass = props.getString("serializer.class", "kafka.serializer.DefaultEncoder")
-  
+
   /** the serializer class for keys (defaults to the same as for values) */
   val keySerializerClass = props.getString("key.serializer.class", serializerClass)
-  
+
 }

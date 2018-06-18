@@ -23,12 +23,12 @@ import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics._
 import org.apache.kafka.common.utils.Time
 
-
-class ClientRequestQuotaManager(private val config: ClientQuotaManagerConfig,
-                                private val metrics: Metrics,
-                                private val time: Time,
-                                threadNamePrefix: String)
-                                extends ClientQuotaManager(config, metrics, QuotaType.Request, time, threadNamePrefix) {
+class ClientRequestQuotaManager(
+  private val config: ClientQuotaManagerConfig,
+  private val metrics: Metrics,
+  private val time: Time,
+  threadNamePrefix: String)
+  extends ClientQuotaManager(config, metrics, QuotaType.Request, time, threadNamePrefix) {
   val maxThrottleTimeMs = TimeUnit.SECONDS.toMillis(this.config.quotaWindowSizeSeconds)
   def exemptSensor = getOrCreateSensor(exemptSensorName, exemptMetricName)
 
@@ -47,9 +47,9 @@ class ClientRequestQuotaManager(private val config: ClientQuotaManagerConfig,
       request.recordNetworkThreadTimeCallback = Some(timeNanos => recordNoThrottle(quotaSensors, nanosToPercentage(timeNanos)))
 
       recordAndThrottleOnQuotaViolation(
-          quotaSensors,
-          nanosToPercentage(request.requestThreadTimeNanos),
-          sendResponseCallback)
+        quotaSensors,
+        nanosToPercentage(request.requestThreadTimeNanos),
+        sendResponseCallback)
     } else {
       sendResponseCallback(0)
     }
@@ -68,14 +68,14 @@ class ClientRequestQuotaManager(private val config: ClientQuotaManagerConfig,
 
   override protected def clientRateMetricName(sanitizedUser: String, clientId: String): MetricName = {
     metrics.metricName("request-time", QuotaType.Request.toString,
-                   "Tracking request-time per user/client-id",
-                   "user", sanitizedUser,
-                   "client-id", clientId)
+      "Tracking request-time per user/client-id",
+      "user", sanitizedUser,
+      "client-id", clientId)
   }
 
   private def exemptMetricName: MetricName = {
     metrics.metricName("exempt-request-time", QuotaType.Request.toString,
-                   "Tracking exempt-request-time utilization percentage")
+      "Tracking exempt-request-time utilization percentage")
   }
 
   private def exemptSensorName: String = "exempt-" + QuotaType.Request

@@ -21,9 +21,9 @@ import joptsimple.OptionParser
 import java.util.concurrent.CountDownLatch
 import java.util.Properties
 import kafka.consumer._
-import kafka.utils.{ToolsUtils, CommandLineUtils, Logging, ZkUtils}
+import kafka.utils.{ ToolsUtils, CommandLineUtils, Logging, ZkUtils }
 import kafka.api.OffsetRequest
-import org.apache.kafka.clients.producer.{ProducerRecord, KafkaProducer, ProducerConfig}
+import org.apache.kafka.clients.producer.{ ProducerRecord, KafkaProducer, ProducerConfig }
 import scala.collection.JavaConverters._
 
 object ReplayLogProducer extends Logging {
@@ -43,7 +43,7 @@ object ReplayLogProducer extends Logging {
     consumerProps.put("zookeeper.connect", config.zkConnect)
     consumerProps.put("consumer.timeout.ms", "10000")
     consumerProps.put("auto.offset.reset", OffsetRequest.SmallestTimeString)
-    consumerProps.put("fetch.message.max.bytes", (1024*1024).toString)
+    consumerProps.put("fetch.message.max.bytes", (1024 * 1024).toString)
     consumerProps.put("socket.receive.buffer.bytes", (2 * 1024 * 1024).toString)
     val consumerConfig = new ConsumerConfig(consumerProps)
     val consumerConnector: ConsumerConnector = Consumer.create(consumerConfig)
@@ -102,13 +102,13 @@ object ReplayLogProducer extends Logging {
       .ofType(classOf[String])
     val syncOpt = parser.accepts("sync", "If set message send requests to the brokers are synchronously, one at a time as they arrive.")
 
-    val options = parser.parse(args : _*)
-    
+    val options = parser.parse(args: _*)
+
     CommandLineUtils.checkRequiredArgs(parser, options, brokerListOpt, inputTopicOpt)
 
     val zkConnect = options.valueOf(zkConnectOpt)
     val brokerList = options.valueOf(brokerListOpt)
-    ToolsUtils.validatePortOrDie(parser,brokerList)
+    ToolsUtils.validatePortOrDie(parser, brokerList)
     val numMessages = options.valueOf(numMessagesOpt).intValue
     val numThreads = options.valueOf(numThreadsOpt).intValue
     val inputTopic = options.valueOf(inputTopicOpt)
@@ -123,35 +123,35 @@ object ReplayLogProducer extends Logging {
 
   class ZKConsumerThread(config: Config, stream: KafkaStream[Array[Byte], Array[Byte]]) extends Thread with Logging {
     val shutdownLatch = new CountDownLatch(1)
-    val producer = new KafkaProducer[Array[Byte],Array[Byte]](config.producerProps)
+    val producer = new KafkaProducer[Array[Byte], Array[Byte]](config.producerProps)
 
     override def run() {
       info("Starting consumer thread..")
       var messageCount: Int = 0
       try {
         val iter =
-          if(config.numMessages >= 0)
+          if (config.numMessages >= 0)
             stream.slice(0, config.numMessages)
           else
             stream
         for (messageAndMetadata <- iter) {
           try {
-            val response = producer.send(new ProducerRecord[Array[Byte],Array[Byte]](config.outputTopic, null,
-                                            messageAndMetadata.timestamp, messageAndMetadata.key(), messageAndMetadata.message()))
-            if(config.isSync) {
+            val response = producer.send(new ProducerRecord[Array[Byte], Array[Byte]](config.outputTopic, null,
+              messageAndMetadata.timestamp, messageAndMetadata.key(), messageAndMetadata.message()))
+            if (config.isSync) {
               response.get()
             }
             messageCount += 1
-          }catch {
+          } catch {
             case ie: Exception => error("Skipping this message", ie)
           }
         }
-      }catch {
+      } catch {
         case e: ConsumerTimeoutException => error("consumer thread timing out", e)
       }
       info("Sent " + messageCount + " messages")
       shutdownLatch.countDown
-      info("thread finished execution !" )
+      info("thread finished execution !")
     }
 
     def shutdown() {

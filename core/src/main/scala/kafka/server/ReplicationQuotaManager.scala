@@ -1,22 +1,22 @@
 /**
-  * Licensed to the Apache Software Foundation (ASF) under one or more
-  * contributor license agreements.  See the NOTICE file distributed with
-  * this work for additional information regarding copyright ownership.
-  * The ASF licenses this file to You under the Apache License, Version 2.0
-  * (the "License"); you may not use this file except in compliance with
-  * the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package kafka.server
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.{ ConcurrentHashMap, TimeUnit }
 
 import kafka.server.Constants._
 import kafka.server.ReplicationQuotaManagerConfig._
@@ -30,16 +30,17 @@ import org.apache.kafka.common.metrics.stats.SimpleRate
 import org.apache.kafka.common.utils.Time
 
 /**
-  * Configuration settings for quota management
-  *
-  * @param quotaBytesPerSecondDefault The default bytes per second quota allocated to internal replication
-  * @param numQuotaSamples            The number of samples to retain in memory
-  * @param quotaWindowSizeSeconds     The time span of each sample
-  *
-  */
-case class ReplicationQuotaManagerConfig(quotaBytesPerSecondDefault: Long = QuotaBytesPerSecondDefault,
-                                         numQuotaSamples: Int = DefaultNumQuotaSamples,
-                                         quotaWindowSizeSeconds: Int = DefaultQuotaWindowSizeSeconds)
+ * Configuration settings for quota management
+ *
+ * @param quotaBytesPerSecondDefault The default bytes per second quota allocated to internal replication
+ * @param numQuotaSamples            The number of samples to retain in memory
+ * @param quotaWindowSizeSeconds     The time span of each sample
+ *
+ */
+case class ReplicationQuotaManagerConfig(
+  quotaBytesPerSecondDefault: Long = QuotaBytesPerSecondDefault,
+  numQuotaSamples: Int = DefaultNumQuotaSamples,
+  quotaWindowSizeSeconds: Int = DefaultQuotaWindowSizeSeconds)
 
 object ReplicationQuotaManagerConfig {
   val QuotaBytesPerSecondDefault = Long.MaxValue
@@ -60,17 +61,18 @@ object Constants {
 }
 
 /**
-  * Tracks replication metrics and comparing them to any quotas for throttled partitions.
-  *
-  * @param config          The quota configs
-  * @param metrics         The Metrics instance
-  * @param replicationType The name / key for this quota manager, typically leader or follower
-  * @param time            Time object to use
-  */
-class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
-                              private val metrics: Metrics,
-                              private val replicationType: QuotaType,
-                              private val time: Time) extends Logging with ReplicaQuota {
+ * Tracks replication metrics and comparing them to any quotas for throttled partitions.
+ *
+ * @param config          The quota configs
+ * @param metrics         The Metrics instance
+ * @param replicationType The name / key for this quota manager, typically leader or follower
+ * @param time            Time object to use
+ */
+class ReplicationQuotaManager(
+  val config: ReplicationQuotaManagerConfig,
+  private val metrics: Metrics,
+  private val replicationType: QuotaType,
+  private val time: Time) extends Logging with ReplicaQuota {
   private val lock = new ReentrantReadWriteLock()
   private val throttledPartitions = new ConcurrentHashMap[String, Seq[Int]]()
   private var quota: Quota = null
@@ -79,10 +81,10 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
     s"Tracking byte-rate for ${replicationType}")
 
   /**
-    * Update the quota
-    *
-    * @param quota
-    */
+   * Update the quota
+   *
+   * @param quota
+   */
   def updateQuota(quota: Quota) {
     inWriteLock(lock) {
       this.quota = quota
@@ -95,10 +97,10 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
   }
 
   /**
-    * Check if the quota is currently exceeded
-    *
-    * @return
-    */
+   * Check if the quota is currently exceeded
+   *
+   * @return
+   */
   override def isQuotaExceeded(): Boolean = {
     try {
       sensor().checkQuotas()
@@ -111,11 +113,11 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
   }
 
   /**
-    * Is the passed partition throttled by this ReplicationQuotaManager
-    *
-    * @param topicPartition the partition to check
-    * @return
-    */
+   * Is the passed partition throttled by this ReplicationQuotaManager
+   *
+   * @param topicPartition the partition to check
+   * @return
+   */
   override def isThrottled(topicPartition: TopicPartition): Boolean = {
     val partitions = throttledPartitions.get(topicPartition.topic)
     if (partitions != null)
@@ -124,11 +126,11 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
   }
 
   /**
-    * Add the passed value to the throttled rate. This method ignores the quota with
-    * the value being added to the rate even if the quota is exceeded
-    *
-    * @param value
-    */
+   * Add the passed value to the throttled rate. This method ignores the quota with
+   * the value being added to the rate even if the quota is exceeded
+   *
+   * @param value
+   */
   def record(value: Long) {
     try {
       sensor().record(value)
@@ -139,42 +141,42 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
   }
 
   /**
-    * Update the set of throttled partitions for this QuotaManager. The partitions passed, for
-    * any single topic, will replace any previous
-    *
-    * @param topic
-    * @param partitions the set of throttled partitions
-    * @return
-    */
+   * Update the set of throttled partitions for this QuotaManager. The partitions passed, for
+   * any single topic, will replace any previous
+   *
+   * @param topic
+   * @param partitions the set of throttled partitions
+   * @return
+   */
   def markThrottled(topic: String, partitions: Seq[Int]) {
     throttledPartitions.put(topic, partitions)
   }
 
   /**
-    * Mark all replicas for this topic as throttled
-    *
-    * @param topic
-    * @return
-    */
+   * Mark all replicas for this topic as throttled
+   *
+   * @param topic
+   * @return
+   */
   def markThrottled(topic: String) {
     markThrottled(topic, AllReplicas)
   }
 
   /**
-    * Remove list of throttled replicas for a certain topic
-    *
-    * @param topic
-    * @return
-    */
+   * Remove list of throttled replicas for a certain topic
+   *
+   * @param topic
+   * @return
+   */
   def removeThrottle(topic: String) {
     throttledPartitions.remove(topic)
   }
 
   /**
-    * Returns the bound of the configured quota
-    *
-    * @return
-    */
+   * Returns the bound of the configured quota
+   *
+   * @return
+   */
   def upperBound(): Long = {
     inReadLock(lock) {
       if (quota != null)
@@ -197,7 +199,6 @@ class ReplicationQuotaManager(val config: ReplicationQuotaManagerConfig,
       InactiveSensorExpirationTimeSeconds,
       rateMetricName,
       Some(getQuotaMetricConfig(quota)),
-      new SimpleRate
-    )
+      new SimpleRate)
   }
 }

@@ -23,12 +23,12 @@ import scala.collection.JavaConverters._
 import java.util.concurrent.atomic.AtomicLong
 import java.nio.channels.ClosedByInterruptException
 
-import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{ ConsumerRebalanceListener, KafkaConsumer }
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.utils.Utils
-import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
-import kafka.utils.{CommandLineUtils, ToolsUtils}
-import java.util.{Collections, Properties, Random}
+import org.apache.kafka.common.{ Metric, MetricName, TopicPartition }
+import kafka.utils.{ CommandLineUtils, ToolsUtils }
+import java.util.{ Collections, Properties, Random }
 
 import kafka.consumer.Consumer
 import kafka.consumer.ConsumerConnector
@@ -105,15 +105,13 @@ object ConsumerPerformance extends LazyLogging {
         totalMBRead,
         totalMBRead / elapsedSecs,
         totalMessagesRead.get,
-        totalMessagesRead.get / elapsedSecs
-      ))
+        totalMessagesRead.get / elapsedSecs))
       if (!config.useOldConsumer) {
         print(", %d, %d, %.4f, %.4f".format(
           joinGroupTimeInMs.get,
           fetchTimeInMs,
           totalMBRead / (fetchTimeInMs / 1000.0),
-          totalMessagesRead.get / (fetchTimeInMs / 1000.0)
-        ))
+          totalMessagesRead.get / (fetchTimeInMs / 1000.0)))
       }
       println()
     }
@@ -127,21 +125,22 @@ object ConsumerPerformance extends LazyLogging {
   private[tools] def printHeader(showDetailedStats: Boolean, useOldConsumer: Boolean): Unit = {
     val newFieldsInHeader = if (!useOldConsumer) ", rebalance.time.ms, fetch.time.ms, fetch.MB.sec, fetch.nMsg.sec" else ""
     if (!showDetailedStats) {
-        println("start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
-      } else {
-        println("time, threadId, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
+      println("start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
+    } else {
+      println("time, threadId, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec" + newFieldsInHeader)
     }
   }
 
-  def consume(consumer: KafkaConsumer[Array[Byte], Array[Byte]],
-              topics: List[String],
-              count: Long,
-              timeout: Long,
-              config: ConsumerPerfConfig,
-              totalMessagesRead: AtomicLong,
-              totalBytesRead: AtomicLong,
-              joinTime: AtomicLong,
-              testStartTime: Long) {
+  def consume(
+    consumer: KafkaConsumer[Array[Byte], Array[Byte]],
+    topics: List[String],
+    count: Long,
+    timeout: Long,
+    config: ConsumerPerfConfig,
+    totalMessagesRead: AtomicLong,
+    totalBytesRead: AtomicLong,
+    joinTime: AtomicLong,
+    testStartTime: Long) {
     var bytesRead = 0L
     var messagesRead = 0L
     var lastBytesRead = 0L
@@ -156,7 +155,8 @@ object ConsumerPerformance extends LazyLogging {
       }
       def onPartitionsRevoked(partitions: util.Collection[TopicPartition]) {
         joinStart = System.currentTimeMillis
-      }})
+      }
+    })
     consumer.poll(0)
     consumer.seekToBeginning(Collections.emptyList())
 
@@ -194,40 +194,43 @@ object ConsumerPerformance extends LazyLogging {
     totalBytesRead.set(bytesRead)
   }
 
-  def printOldConsumerProgress(id: Int,
-                               bytesRead: Long,
-                               lastBytesRead: Long,
-                               messagesRead: Long,
-                               lastMessagesRead: Long,
-                               startMs: Long,
-                               endMs: Long,
-                               dateFormat: SimpleDateFormat): Unit = {
+  def printOldConsumerProgress(
+    id: Int,
+    bytesRead: Long,
+    lastBytesRead: Long,
+    messagesRead: Long,
+    lastMessagesRead: Long,
+    startMs: Long,
+    endMs: Long,
+    dateFormat: SimpleDateFormat): Unit = {
     printBasicProgress(id, bytesRead, lastBytesRead, messagesRead, lastMessagesRead, startMs, endMs, dateFormat)
     println()
   }
 
-  def printNewConsumerProgress(id: Int,
-                               bytesRead: Long,
-                               lastBytesRead: Long,
-                               messagesRead: Long,
-                               lastMessagesRead: Long,
-                               startMs: Long,
-                               endMs: Long,
-                               dateFormat: SimpleDateFormat,
-                               periodicJoinTimeInMs: Long): Unit = {
+  def printNewConsumerProgress(
+    id: Int,
+    bytesRead: Long,
+    lastBytesRead: Long,
+    messagesRead: Long,
+    lastMessagesRead: Long,
+    startMs: Long,
+    endMs: Long,
+    dateFormat: SimpleDateFormat,
+    periodicJoinTimeInMs: Long): Unit = {
     printBasicProgress(id, bytesRead, lastBytesRead, messagesRead, lastMessagesRead, startMs, endMs, dateFormat)
     printExtendedProgress(bytesRead, lastBytesRead, messagesRead, lastMessagesRead, startMs, endMs, periodicJoinTimeInMs)
     println()
   }
 
-  private def printBasicProgress(id: Int,
-                                 bytesRead: Long,
-                                 lastBytesRead: Long,
-                                 messagesRead: Long,
-                                 lastMessagesRead: Long,
-                                 startMs: Long,
-                                 endMs: Long,
-                                 dateFormat: SimpleDateFormat): Unit = {
+  private def printBasicProgress(
+    id: Int,
+    bytesRead: Long,
+    lastBytesRead: Long,
+    messagesRead: Long,
+    lastMessagesRead: Long,
+    startMs: Long,
+    endMs: Long,
+    dateFormat: SimpleDateFormat): Unit = {
     val elapsedMs: Double = endMs - startMs
     val totalMbRead = (bytesRead * 1.0) / (1024 * 1024)
     val intervalMbRead = ((bytesRead - lastBytesRead) * 1.0) / (1024 * 1024)
@@ -237,13 +240,14 @@ object ConsumerPerformance extends LazyLogging {
       intervalMbPerSec, messagesRead, intervalMessagesPerSec))
   }
 
-  private def printExtendedProgress(bytesRead: Long,
-                                    lastBytesRead: Long,
-                                    messagesRead: Long,
-                                    lastMessagesRead: Long,
-                                    startMs: Long,
-                                    endMs: Long,
-                                    periodicJoinTimeInMs: Long): Unit = {
+  private def printExtendedProgress(
+    bytesRead: Long,
+    lastBytesRead: Long,
+    messagesRead: Long,
+    lastMessagesRead: Long,
+    startMs: Long,
+    endMs: Long,
+    periodicJoinTimeInMs: Long): Unit = {
     val fetchTimeMs = endMs - startMs - periodicJoinTimeInMs
     val intervalMbRead = ((bytesRead - lastBytesRead) * 1.0) / (1024 * 1024)
     val intervalMessagesRead = messagesRead - lastMessagesRead
@@ -358,13 +362,14 @@ object ConsumerPerformance extends LazyLogging {
     val hideHeader = options.has(hideHeaderOpt)
   }
 
-  class ConsumerPerfThread(threadId: Int,
-                           name: String,
-                           stream: KafkaStream[Array[Byte], Array[Byte]],
-                           config: ConsumerPerfConfig,
-                           totalMessagesRead: AtomicLong,
-                           totalBytesRead: AtomicLong,
-                           consumerTimeout: AtomicBoolean)
+  class ConsumerPerfThread(
+    threadId: Int,
+    name: String,
+    stream: KafkaStream[Array[Byte], Array[Byte]],
+    config: ConsumerPerfConfig,
+    totalMessagesRead: AtomicLong,
+    totalBytesRead: AtomicLong,
+    consumerTimeout: AtomicBoolean)
     extends Thread(name) {
 
     override def run() {

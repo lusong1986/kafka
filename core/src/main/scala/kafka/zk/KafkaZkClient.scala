@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.zk
 
 import java.util.Properties
@@ -26,19 +26,19 @@ import kafka.controller.LeaderIsrAndControllerEpoch
 import kafka.log.LogConfig
 import kafka.metrics.KafkaMetricsGroup
 import kafka.security.auth.SimpleAclAuthorizer.VersionedAcls
-import kafka.security.auth.{Acl, Resource, ResourceType}
+import kafka.security.auth.{ Acl, Resource, ResourceType }
 import kafka.server.ConfigType
 import kafka.utils.Logging
 import kafka.zookeeper._
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.security.token.delegation.{DelegationToken, TokenInformation}
+import org.apache.kafka.common.security.token.delegation.{ DelegationToken, TokenInformation }
 import org.apache.kafka.common.utils.Time
-import org.apache.zookeeper.KeeperException.{Code, NodeExistsException}
-import org.apache.zookeeper.data.{ACL, Stat}
-import org.apache.zookeeper.{CreateMode, KeeperException, ZooKeeper}
+import org.apache.zookeeper.KeeperException.{ Code, NodeExistsException }
+import org.apache.zookeeper.data.{ ACL, Stat }
+import org.apache.zookeeper.{ CreateMode, KeeperException, ZooKeeper }
 
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.{Seq, mutable}
+import scala.collection.{ Seq, mutable }
 
 /**
  * Provides higher level Kafka-specific operations on top of the pipelined [[kafka.zookeeper.ZooKeeperClient]].
@@ -50,8 +50,7 @@ import scala.collection.{Seq, mutable}
  * easier to quickly migrate away from `ZkUtils`. We should revisit this once the migration is completed and tests are
  * in place. We should also consider whether a monolithic [[kafka.zk.ZkData]] is the way to go.
  */
-class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean, time: Time) extends AutoCloseable with
-  Logging with KafkaMetricsGroup {
+class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean, time: Time) extends AutoCloseable with Logging with KafkaMetricsGroup {
 
   override def metricName(name: String, metricTags: scala.collection.Map[String, String]): MetricName = {
     explicitMetricName("kafka.server", "ZooKeeperClientMetrics", name, metricTags)
@@ -111,10 +110,11 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @return sequence of SetDataResponse whose contexts are the partitions they are associated with.
    */
   def setTopicPartitionStatesRaw(leaderIsrAndControllerEpochs: Map[TopicPartition, LeaderIsrAndControllerEpoch]): Seq[SetDataResponse] = {
-    val setDataRequests = leaderIsrAndControllerEpochs.map { case (partition, leaderIsrAndControllerEpoch) =>
-      val path = TopicPartitionStateZNode.path(partition)
-      val data = TopicPartitionStateZNode.encode(leaderIsrAndControllerEpoch)
-      SetDataRequest(path, data, leaderIsrAndControllerEpoch.leaderAndIsr.zkVersion, Some(partition))
+    val setDataRequests = leaderIsrAndControllerEpochs.map {
+      case (partition, leaderIsrAndControllerEpoch) =>
+        val path = TopicPartitionStateZNode.path(partition)
+        val data = TopicPartitionStateZNode.encode(leaderIsrAndControllerEpoch)
+        SetDataRequest(path, data, leaderIsrAndControllerEpoch.leaderAndIsr.zkVersion, Some(partition))
     }
     retryRequestsUntilConnected(setDataRequests.toSeq)
   }
@@ -127,10 +127,11 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   def createTopicPartitionStatesRaw(leaderIsrAndControllerEpochs: Map[TopicPartition, LeaderIsrAndControllerEpoch]): Seq[CreateResponse] = {
     createTopicPartitions(leaderIsrAndControllerEpochs.keys.map(_.topic).toSet.toSeq)
     createTopicPartition(leaderIsrAndControllerEpochs.keys.toSeq)
-    val createRequests = leaderIsrAndControllerEpochs.map { case (partition, leaderIsrAndControllerEpoch) =>
-      val path = TopicPartitionStateZNode.path(partition)
-      val data = TopicPartitionStateZNode.encode(leaderIsrAndControllerEpoch)
-      CreateRequest(path, data, acls(path), CreateMode.PERSISTENT, Some(partition))
+    val createRequests = leaderIsrAndControllerEpochs.map {
+      case (partition, leaderIsrAndControllerEpoch) =>
+        val path = TopicPartitionStateZNode.path(partition)
+        val data = TopicPartitionStateZNode.encode(leaderIsrAndControllerEpoch)
+        CreateRequest(path, data, acls(path), CreateMode.PERSISTENT, Some(partition))
     }
     retryRequestsUntilConnected(createRequests.toSeq)
   }
@@ -167,8 +168,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
     val successfulUpdates = mutable.Map.empty[TopicPartition, LeaderAndIsr]
     val updatesToRetry = mutable.Buffer.empty[TopicPartition]
     val failed = mutable.Map.empty[TopicPartition, Exception]
-    val leaderIsrAndControllerEpochs = leaderAndIsrs.map { case (partition, leaderAndIsr) =>
-      partition -> LeaderIsrAndControllerEpoch(leaderAndIsr, controllerEpoch)
+    val leaderIsrAndControllerEpochs = leaderAndIsrs.map {
+      case (partition, leaderAndIsr) =>
+        partition -> LeaderIsrAndControllerEpoch(leaderAndIsr, controllerEpoch)
     }
     val setDataResponses = try {
       setTopicPartitionStatesRaw(leaderIsrAndControllerEpochs)
@@ -198,8 +200,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    *         1. The successfully gathered log configs
    *         2. Exceptions corresponding to failed log config lookups.
    */
-  def getLogConfigs(topics: Seq[String], config: java.util.Map[String, AnyRef]):
-  (Map[String, LogConfig], Map[String, Exception]) = {
+  def getLogConfigs(topics: Seq[String], config: java.util.Map[String, AnyRef]): (Map[String, LogConfig], Map[String, Exception]) = {
     val logConfigs = mutable.Map.empty[String, LogConfig]
     val failed = mutable.Map.empty[String, Exception]
     val configResponses = try {
@@ -313,9 +314,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   /**
-    * Get a broker from ZK
-    * @return an optional Broker
-    */
+   * Get a broker from ZK
+   * @return an optional Broker
+   */
   def getBroker(brokerId: Int): Option[Broker] = {
     val getDataRequest = GetDataRequest(BrokerIdZNode.path(brokerId))
     val getDataResponse = retryRequestUntilConnected(getDataRequest)
@@ -471,7 +472,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
     val getDataResponses = retryRequestsUntilConnected(getDataRequests.toSeq)
     getDataResponses.flatMap { getDataResponse =>
       val topic = getDataResponse.ctx.get.asInstanceOf[String]
-       if (getDataResponse.resultCode == Code.OK) {
+      if (getDataResponse.resultCode == Code.OK) {
         val partitionMap = TopicZNode.decode(topic, getDataResponse.data).map { case (k, v) => (k.partition, v) }
         Map(topic -> partitionMap)
       } else if (getDataResponse.resultCode == Code.NONODE) {
@@ -571,7 +572,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @param path
    * @return list of child node names
    */
-  def getChildren(path : String): Seq[String] = {
+  def getChildren(path: String): Seq[String] = {
     val getChildrenResponse = retryRequestUntilConnected(GetChildrenRequest(path))
     getChildrenResponse.resultCode match {
       case Code.OK => getChildrenResponse.children
@@ -589,7 +590,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * In this case, we will run the optionalChecker to further check if the previous write did indeed succeeded.
    */
   def conditionalUpdatePath(path: String, data: Array[Byte], expectVersion: Int,
-                            optionalChecker: Option[(KafkaZkClient, String, Array[Byte]) => (Boolean,Int)] = None): (Boolean, Int) = {
+    optionalChecker: Option[(KafkaZkClient, String, Array[Byte]) => (Boolean, Int)] = None): (Boolean, Int) = {
 
     val setDataRequest = SetDataRequest(path, data, expectVersion)
     val setDataResponse = retryRequestUntilConnected(setDataRequest)
@@ -711,7 +712,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @param reassignment the reassignment to set on the reassignment znode.
    * @throws KeeperException if there is an error while creating the znode
    */
-  def createPartitionReassignment(reassignment: Map[TopicPartition, Seq[Int]])  = {
+  def createPartitionReassignment(reassignment: Map[TopicPartition, Seq[Int]]) = {
     createRecursive(ReassignPartitionsZNode.path, ReassignPartitionsZNode.encode(reassignment))
   }
 
@@ -832,7 +833,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @param partitions
    * @throws KeeperException if there is an error while creating the znode
    */
-  def createPreferredReplicaElection(partitions: Set[TopicPartition]): Unit  = {
+  def createPreferredReplicaElection(partitions: Set[TopicPartition]): Unit = {
     createRecursive(PreferredReplicaElectionZNode.path, PreferredReplicaElectionZNode.encode(partitions))
   }
 
@@ -948,7 +949,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
    * @return true if the update was successful and the new version
    */
   def conditionalSetOrCreateAclsForResource(resource: Resource, aclsSet: Set[Acl], expectedVersion: Int): (Boolean, Int) = {
-    def set(aclData: Array[Byte],  expectedVersion: Int): SetDataResponse = {
+    def set(aclData: Array[Byte], expectedVersion: Int): SetDataResponse = {
       val setDataRequest = SetDataRequest(ResourceZNode.path(resource), aclData, expectedVersion)
       retryRequestUntilConnected(setDataRequest)
     }
@@ -996,7 +997,8 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   def propagateIsrChanges(isrChangeSet: collection.Set[TopicPartition]): Unit = {
-    val isrChangeNotificationPath: String = createSequentialPersistentPath(IsrChangeNotificationSequenceZNode.path(),
+    val isrChangeNotificationPath: String = createSequentialPersistentPath(
+      IsrChangeNotificationSequenceZNode.path(),
       IsrChangeNotificationSequenceZNode.encode(isrChangeSet))
     debug(s"Added $isrChangeNotificationPath for $isrChangeSet")
   }
@@ -1269,9 +1271,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   /**
-    * Get the cluster id.
-    * @return optional cluster id in String.
-    */
+   * Get the cluster id.
+   * @return optional cluster id in String.
+   */
   def getClusterId: Option[String] = {
     val getDataRequest = GetDataRequest(ClusterIdZNode.path)
     val getDataResponse = retryRequestUntilConnected(getDataRequest)
@@ -1283,9 +1285,9 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   /**
-    * Create the cluster Id. If the cluster id already exists, return the current cluster id.
-    * @return  cluster id
-    */
+   * Create the cluster Id. If the cluster id already exists, return the current cluster id.
+   * @return  cluster id
+   */
   def createOrGetClusterId(proposedClusterId: String): String = {
     try {
       createRecursive(ClusterIdZNode.path, ClusterIdZNode.toJson(proposedClusterId))
@@ -1297,10 +1299,10 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   /**
-    * Generate a broker id by updating the broker sequence id path in ZK and return the version of the path.
-    * The version is incremented by one on every update starting from 1.
-    * @return sequence number as the broker id
-    */
+   * Generate a broker id by updating the broker sequence id path in ZK and return the version of the path.
+   * The version is incremented by one on every update starting from 1.
+   * @return sequence number as the broker id
+   */
   def generateBrokerSequenceId(): Int = {
     val setDataRequest = SetDataRequest(BrokerSequenceIdZNode.path, Array.empty[Byte], -1)
     val setDataResponse = retryRequestUntilConnected(setDataRequest)
@@ -1315,22 +1317,23 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
   }
 
   /**
-    * Pre-create top level paths in ZK if needed.
-    */
+   * Pre-create top level paths in ZK if needed.
+   */
   def createTopLevelPaths(): Unit = {
     ZkData.PersistentZkPaths.foreach(makeSurePersistentPathExists(_))
   }
 
   /**
-    * Make sure a persistent path exists in ZK.
-    * @param path
-    */
+   * Make sure a persistent path exists in ZK.
+   * @param path
+   */
   def makeSurePersistentPathExists(path: String): Unit = {
     createRecursive(path, data = null, throwIfPathExists = false)
   }
 
   private def setConsumerOffset(group: String, topicPartition: TopicPartition, offset: Long): SetDataResponse = {
-    val setDataRequest = SetDataRequest(ConsumerOffset.path(group, topicPartition.topic, topicPartition.partition),
+    val setDataRequest = SetDataRequest(
+      ConsumerOffset.path(group, topicPartition.topic, topicPartition.partition),
       ConsumerOffset.encode(offset), ZkVersion.NoVersion)
     retryRequestUntilConnected(setDataRequest)
   }
@@ -1450,11 +1453,12 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
         val requestResponsePairs = remainingRequests.zip(batchResponses)
 
         remainingRequests.clear()
-        requestResponsePairs.foreach { case (request, response) =>
-          if (response.resultCode == Code.CONNECTIONLOSS)
-            remainingRequests += request
-          else
-            responses += response
+        requestResponsePairs.foreach {
+          case (request, response) =>
+            if (response.resultCode == Code.CONNECTIONLOSS)
+              remainingRequests += request
+            else
+              responses += response
         }
 
         if (remainingRequests.nonEmpty)
@@ -1481,7 +1485,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
       val createRequest = CreateRequest(path, data, acls(path), CreateMode.EPHEMERAL)
       val createResponse = retryRequestUntilConnected(createRequest)
       createResponse.resultCode match {
-        case code@ Code.OK => code
+        case code @ Code.OK => code
         case Code.NODEEXISTS => getAfterNodeExists()
         case code =>
           error(s"Error while creating ephemeral at $path with return code: $code")
@@ -1497,7 +1501,7 @@ class KafkaZkClient private (zooKeeperClient: ZooKeeperClient, isSecure: Boolean
           error(s"Error while creating ephemeral at $path, node already exists and owner " +
             s"'${getDataResponse.stat.getEphemeralOwner}' does not match current session '${zooKeeperClient.sessionId}'")
           Code.NODEEXISTS
-        case code@ Code.OK => code
+        case code @ Code.OK => code
         case Code.NONODE =>
           info(s"The ephemeral node at $path went away while reading it, attempting create() again")
           create()
@@ -1518,23 +1522,25 @@ object KafkaZkClient {
    *                      update partition state.
    * @param failedPartitions Exceptions corresponding to failed partition state updates.
    */
-  case class UpdateLeaderAndIsrResult(successfulPartitions: Map[TopicPartition, LeaderAndIsr],
-                                      partitionsToRetry: Seq[TopicPartition],
-                                      failedPartitions: Map[TopicPartition, Exception])
+  case class UpdateLeaderAndIsrResult(
+    successfulPartitions: Map[TopicPartition, LeaderAndIsr],
+    partitionsToRetry: Seq[TopicPartition],
+    failedPartitions: Map[TopicPartition, Exception])
 
   /**
    * Create an instance of this class with the provided parameters.
    *
    * The metric group and type are preserved by default for compatibility with previous versions.
    */
-  def apply(connectString: String,
-            isSecure: Boolean,
-            sessionTimeoutMs: Int,
-            connectionTimeoutMs: Int,
-            maxInFlightRequests: Int,
-            time: Time,
-            metricGroup: String = "kafka.server",
-            metricType: String = "SessionExpireListener") = {
+  def apply(
+    connectString: String,
+    isSecure: Boolean,
+    sessionTimeoutMs: Int,
+    connectionTimeoutMs: Int,
+    maxInFlightRequests: Int,
+    time: Time,
+    metricGroup: String = "kafka.server",
+    metricType: String = "SessionExpireListener") = {
     val zooKeeperClient = new ZooKeeperClient(connectString, sessionTimeoutMs, connectionTimeoutMs, maxInFlightRequests,
       time, metricGroup, metricType)
     new KafkaZkClient(zooKeeperClient, isSecure, time)

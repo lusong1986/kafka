@@ -17,8 +17,9 @@
 
 package kafka.tools
 
-import kafka.utils.Exit
 import org.apache.zookeeper.ZooKeeperMain
+
+import kafka.utils.Exit
 
 class ZooKeeperMainWrapper(args: Array[String]) extends ZooKeeperMain(args) {
   def runCmd(): Unit = {

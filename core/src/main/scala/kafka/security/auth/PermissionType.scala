@@ -16,8 +16,10 @@
  */
 package kafka.security.auth
 
-import kafka.common.{BaseEnum, KafkaException}
 import org.apache.kafka.common.acl.AclPermissionType
+
+import kafka.common.BaseEnum
+import kafka.common.KafkaException
 
 sealed trait PermissionType extends BaseEnum {
   val toJava: AclPermissionType

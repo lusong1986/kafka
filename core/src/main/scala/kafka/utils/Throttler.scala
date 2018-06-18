@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -27,28 +27,29 @@ import scala.math._
 
 /**
  * A class to measure and throttle the rate of some process. The throttler takes a desired rate-per-second
- * (the units of the process don't matter, it could be bytes or a count of some other thing), and will sleep for 
+ * (the units of the process don't matter, it could be bytes or a count of some other thing), and will sleep for
  * an appropriate amount of time when maybeThrottle() is called to attain the desired rate.
- * 
+ *
  * @param desiredRatePerSec: The rate we want to hit in units/sec
  * @param checkIntervalMs: The interval at which to check our rate
  * @param throttleDown: Does throttling increase or decrease our rate?
  * @param time: The time implementation to use
  */
 @threadsafe
-class Throttler(desiredRatePerSec: Double,
-                checkIntervalMs: Long = 100L,
-                throttleDown: Boolean = true,
-                metricName: String = "throttler",
-                units: String = "entries",
-                time: Time = Time.SYSTEM) extends Logging with KafkaMetricsGroup {
-  
+class Throttler(
+  desiredRatePerSec: Double,
+  checkIntervalMs: Long = 100L,
+  throttleDown: Boolean = true,
+  metricName: String = "throttler",
+  units: String = "entries",
+  time: Time = Time.SYSTEM) extends Logging with KafkaMetricsGroup {
+
   private val lock = new Object
   private val meter = newMeter(metricName, units, TimeUnit.SECONDS)
   private val checkIntervalNs = TimeUnit.MILLISECONDS.toNanos(checkIntervalMs)
   private var periodStartNs: Long = time.nanoseconds
   private var observedSoFar: Double = 0.0
-  
+
   def maybeThrottle(observed: Double) {
     val msPerSec = TimeUnit.SECONDS.toMillis(1)
     val nsPerSec = TimeUnit.SECONDS.toNanos(1)
@@ -82,21 +83,21 @@ class Throttler(desiredRatePerSec: Double,
 }
 
 object Throttler {
-  
+
   def main(args: Array[String]) {
     val rand = new Random()
     val throttler = new Throttler(100000, 100, true, time = Time.SYSTEM)
     val interval = 30000
     var start = System.currentTimeMillis
     var total = 0
-    while(true) {
+    while (true) {
       val value = rand.nextInt(1000)
       Thread.sleep(1)
       throttler.maybeThrottle(value)
       total += value
       val now = System.currentTimeMillis
-      if(now - start >= interval) {
-        println(total / (interval/1000.0))
+      if (now - start >= interval) {
+        println(total / (interval / 1000.0))
         start = now
         total = 0
       }

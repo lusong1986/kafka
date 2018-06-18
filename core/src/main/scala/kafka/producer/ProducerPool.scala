@@ -50,14 +50,14 @@ class ProducerPool(val config: ProducerConfig) extends Logging {
     val newBrokers = new collection.mutable.HashSet[BrokerEndPoint]
     topicMetadata.foreach(tmd => {
       tmd.partitionsMetadata.foreach(pmd => {
-        if(pmd.leader.isDefined) {
+        if (pmd.leader.isDefined) {
           newBrokers += pmd.leader.get
         }
       })
     })
     lock synchronized {
       newBrokers.foreach(b => {
-        if(syncProducers.contains(b.id)){
+        if (syncProducers.contains(b.id)) {
           syncProducers(b.id).close()
           syncProducers.put(b.id, ProducerPool.createSyncProducer(config, b))
         } else
@@ -66,7 +66,7 @@ class ProducerPool(val config: ProducerConfig) extends Logging {
     }
   }
 
-  def getProducer(brokerId: Int) : SyncProducer = {
+  def getProducer(brokerId: Int): SyncProducer = {
     lock.synchronized {
       val producer = syncProducers.get(brokerId)
       producer match {
@@ -83,7 +83,7 @@ class ProducerPool(val config: ProducerConfig) extends Logging {
     lock.synchronized {
       info("Closing all sync producers")
       val iter = syncProducers.values.iterator
-      while(iter.hasNext)
+      while (iter.hasNext)
         iter.next.close
     }
   }

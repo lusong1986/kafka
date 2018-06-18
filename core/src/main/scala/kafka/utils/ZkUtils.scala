@@ -20,25 +20,53 @@ package kafka.utils
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
 
-import kafka.admin._
-import kafka.api.{ApiVersion, KAFKA_0_10_0_IV1, LeaderAndIsr}
-import kafka.cluster._
-import kafka.common.{KafkaException, NoEpochForPartitionException, TopicAndPartition}
-import kafka.consumer.{ConsumerThreadId, TopicCount}
-import kafka.controller.{LeaderIsrAndControllerEpoch, ReassignedPartitionsContext}
-import kafka.zk.{BrokerIdZNode, ZkData}
-import org.I0Itec.zkclient.exception.{ZkBadVersionException, ZkException, ZkMarshallingError, ZkNoNodeException, ZkNodeExistsException}
-import org.I0Itec.zkclient.serialize.ZkSerializer
-import org.I0Itec.zkclient.{IZkChildListener, IZkDataListener, IZkStateListener, ZkClient, ZkConnection}
-import org.apache.kafka.common.config.ConfigException
-import org.apache.zookeeper.AsyncCallback.{DataCallback, StringCallback}
-import org.apache.zookeeper.KeeperException.Code
-import org.apache.zookeeper.data.{ACL, Stat}
-import org.apache.zookeeper.{CreateMode, KeeperException, ZooDefs, ZooKeeper}
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.seqAsJavaListConverter
+import scala.collection.Map
+import scala.collection.Seq
+import scala.collection.Set
+import scala.collection.mutable
 
-import scala.collection._
-import scala.collection.JavaConverters._
+import org.I0Itec.zkclient.IZkChildListener
+import org.I0Itec.zkclient.IZkDataListener
+import org.I0Itec.zkclient.IZkStateListener
+import org.I0Itec.zkclient.ZkClient
+import org.I0Itec.zkclient.ZkConnection
+import org.I0Itec.zkclient.exception.ZkBadVersionException
+import org.I0Itec.zkclient.exception.ZkException
+import org.I0Itec.zkclient.exception.ZkMarshallingError
+import org.I0Itec.zkclient.exception.ZkNoNodeException
+import org.I0Itec.zkclient.exception.ZkNodeExistsException
+import org.I0Itec.zkclient.serialize.ZkSerializer
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.config.ConfigException
+import org.apache.zookeeper.AsyncCallback.DataCallback
+import org.apache.zookeeper.AsyncCallback.StringCallback
+import org.apache.zookeeper.CreateMode
+import org.apache.zookeeper.KeeperException
+import org.apache.zookeeper.KeeperException.Code
+import org.apache.zookeeper.ZooDefs
+import org.apache.zookeeper.ZooKeeper
+import org.apache.zookeeper.data.ACL
+import org.apache.zookeeper.data.Stat
+
+import kafka.admin.AdminOperationException
+import kafka.admin.PreferredReplicaLeaderElectionCommand
+import kafka.api.ApiVersion
+import kafka.api.KAFKA_0_10_0_IV1
+import kafka.api.LeaderAndIsr
+import kafka.cluster.Broker
+import kafka.cluster.Cluster
+import kafka.cluster.EndPoint
+import kafka.common.KafkaException
+import kafka.common.NoEpochForPartitionException
+import kafka.common.TopicAndPartition
+import kafka.consumer.ConsumerThreadId
+import kafka.consumer.TopicCount
+import kafka.controller.LeaderIsrAndControllerEpoch
+import kafka.controller.ReassignedPartitionsContext
+import kafka.zk.BrokerIdZNode
+import kafka.zk.ZkData
 
 object ZkUtils {
 

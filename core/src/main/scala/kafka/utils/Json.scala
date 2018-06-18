@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -60,7 +60,7 @@ object Json {
    * Encode an object into a JSON string. This method accepts any type T where
    *   T => null | Boolean | String | Number | Map[String, T] | Array[T] | Iterable[T]
    * Any other type will result in an exception.
-   * 
+   *
    * This implementation is inefficient, so we recommend `encodeAsString` or `encodeAsBytes` (the latter is preferred
    * if possible). This method supports scala Map implementations while the other two do not. Once this functionality
    * is no longer required, we can remove this method.
@@ -83,10 +83,10 @@ object Json {
   }
 
   /**
-    * Encode an object into a JSON string. This method accepts any type supported by Jackson's ObjectMapper in
+   * Encode an object into a JSON string. This method accepts any type supported by Jackson's ObjectMapper in
    * the default configuration. That is, Java collections are supported, but Scala collections are not (to avoid
    * a jackson-scala dependency).
-    */
+   */
   def encodeAsString(obj: Any): String = mapper.writeValueAsString(obj)
 
   /**

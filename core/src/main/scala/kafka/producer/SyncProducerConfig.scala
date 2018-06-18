@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.producer
 
@@ -21,7 +21,7 @@ import java.util.Properties
 import kafka.utils.VerifiableProperties
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 class SyncProducerConfig private (val props: VerifiableProperties) extends SyncProducerConfigShared {
   def this(originalProps: Properties) {
     this(new VerifiableProperties(originalProps))
@@ -36,11 +36,11 @@ class SyncProducerConfig private (val props: VerifiableProperties) extends SyncP
 }
 
 @deprecated("This trait has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 trait SyncProducerConfigShared {
   val props: VerifiableProperties
-  
-  val sendBufferBytes = props.getInt("send.buffer.bytes", 100*1024)
+
+  val sendBufferBytes = props.getInt("send.buffer.bytes", 100 * 1024)
 
   /* the client application sending the producer requests */
   val clientId = props.getString("client.id", SyncProducerConfig.DefaultClientId)
@@ -54,19 +54,19 @@ trait SyncProducerConfigShared {
    * request.required.acks = -1 - means the leader will wait for acknowledgement from all in-sync replicas before acknowledging the write
    */
 
-  val requestRequiredAcks = props.getShortInRange("request.required.acks", SyncProducerConfig.DefaultRequiredAcks,(-1,1))
+  val requestRequiredAcks = props.getShortInRange("request.required.acks", SyncProducerConfig.DefaultRequiredAcks, (-1, 1))
 
   /*
    * The ack timeout of the producer requests. Value must be non-negative and non-zero
    */
   val requestTimeoutMs = props.getIntInRange("request.timeout.ms", SyncProducerConfig.DefaultAckTimeoutMs,
-                                             (1, Integer.MAX_VALUE))
+    (1, Integer.MAX_VALUE))
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 object SyncProducerConfig {
   val DefaultClientId = ""
-  val DefaultRequiredAcks : Short = 0
+  val DefaultRequiredAcks: Short = 0
   val DefaultAckTimeoutMs = 10000
 }

@@ -20,19 +20,19 @@ package kafka.tools
 import java.io.PrintStream
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CountDownLatch
-import java.util.{Locale, Properties, Random}
+import java.util.{ Locale, Properties, Random }
 
 import com.typesafe.scalalogging.LazyLogging
 import joptsimple._
 import kafka.api.OffsetRequest
-import kafka.common.{MessageFormatter, StreamEndException}
+import kafka.common.{ MessageFormatter, StreamEndException }
 import kafka.consumer._
 import kafka.message._
 import kafka.metrics.KafkaMetricsReporter
 import kafka.utils._
 import kafka.utils.Implicits._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
-import org.apache.kafka.common.errors.{AuthenticationException, WakeupException}
+import org.apache.kafka.clients.consumer.{ ConsumerConfig, ConsumerRecord }
+import org.apache.kafka.common.errors.{ AuthenticationException, WakeupException }
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.utils.Utils
@@ -144,7 +144,7 @@ object ConsoleConsumer extends Logging {
       messageCount += 1
       try {
         formatter.writeTo(new ConsumerRecord(msg.topic, msg.partition, msg.offset, msg.timestamp,
-                                             msg.timestampType, 0, 0, 0, msg.key, msg.value, msg.headers), output)
+          msg.timestampType, 0, 0, 0, msg.key, msg.value, msg.headers), output)
       } catch {
         case e: Throwable =>
           if (skipMessageOnError) {
@@ -216,16 +216,16 @@ object ConsoleConsumer extends Logging {
   }
 
   /**
-    * Used by both getNewConsumerProps and getOldConsumerProps to retrieve the correct value for the
-    * consumer parameter 'auto.offset.reset'.
-    * Order of priority is:
-    *   1. Explicitly set parameter via --consumer.property command line parameter
-    *   2. Explicit --from-beginning given -> 'earliest'
-    *   3. Default value of 'latest'
-    *
-    * In case both --from-beginning and an explicit value are specified an error is thrown if these
-    * are conflicting.
-    */
+   * Used by both getNewConsumerProps and getOldConsumerProps to retrieve the correct value for the
+   * consumer parameter 'auto.offset.reset'.
+   * Order of priority is:
+   *   1. Explicitly set parameter via --consumer.property command line parameter
+   *   2. Explicit --from-beginning given -> 'earliest'
+   *   3. Default value of 'latest'
+   *
+   * In case both --from-beginning and an explicit value are specified an error is thrown if these
+   * are conflicting.
+   */
   def setAutoOffsetResetValue(config: ConsumerConfig, props: Properties) {
     val (earliestConfigValue, latestConfigValue) = if (config.useOldConsumer)
       (OffsetRequest.SmallestTimeString, OffsetRequest.LargestTimeString)
@@ -330,11 +330,13 @@ object ConsoleConsumer extends Logging {
       .withRequiredArg
       .describedAs("deserializer for values")
       .ofType(classOf[String])
-    val enableSystestEventsLoggingOpt = parser.accepts("enable-systest-events",
-                                                       "Log lifecycle events of the consumer in addition to logging consumed " +
-                                                       "messages. (This is specific for system tests.)")
-    val isolationLevelOpt = parser.accepts("isolation-level",
-        "Set to read_committed in order to filter out transactional messages which are not committed. Set to read_uncommitted" +
+    val enableSystestEventsLoggingOpt = parser.accepts(
+      "enable-systest-events",
+      "Log lifecycle events of the consumer in addition to logging consumed " +
+        "messages. (This is specific for system tests.)")
+    val isolationLevelOpt = parser.accepts(
+      "isolation-level",
+      "Set to read_committed in order to filter out transactional messages which are not committed. Set to read_uncommitted" +
         "to read all messages.")
       .withRequiredArg()
       .ofType(classOf[String])
@@ -434,8 +436,7 @@ object ConsoleConsumer extends Logging {
             if (offset < 0) invalidOffset(offsetString)
             offset
         }
-      }
-      else if (fromBeginning) OffsetRequest.EarliestTime
+      } else if (fromBeginning) OffsetRequest.EarliestTime
       else OffsetRequest.LatestTime
 
     if (!useOldConsumer) {
@@ -462,15 +463,15 @@ object ConsoleConsumer extends Logging {
 
     // if the group id is provided in more than place (through different means) all values must be the same
     val groupIdsProvided = Set(
-        Option(options.valueOf(groupIdOpt)),                           // via --group
-        Option(consumerProps.get(ConsumerConfig.GROUP_ID_CONFIG)),     // via --consumer-property
-        Option(extraConsumerProps.get(ConsumerConfig.GROUP_ID_CONFIG)) // via --cosumer.config
-      ).flatten
+      Option(options.valueOf(groupIdOpt)), // via --group
+      Option(consumerProps.get(ConsumerConfig.GROUP_ID_CONFIG)), // via --consumer-property
+      Option(extraConsumerProps.get(ConsumerConfig.GROUP_ID_CONFIG)) // via --cosumer.config
+    ).flatten
 
     if (groupIdsProvided.size > 1) {
       CommandLineUtils.printUsageAndDie(parser, "The group ids provided in different places (directly using '--group', "
-                                              + "via '--consumer-property', or via '--consumer.config') do not match. "
-                                              + s"Detected group ids: ${groupIdsProvided.mkString("'", "', '", "'")}")
+        + "via '--consumer-property', or via '--consumer.config') do not match. "
+        + s"Detected group ids: ${groupIdsProvided.mkString("'", "', '", "'")}")
     }
 
     groupIdsProvided.headOption match {
@@ -576,16 +577,16 @@ class LoggingMessageFormatter extends MessageFormatter with LazyLogging {
   def writeTo(consumerRecord: ConsumerRecord[Array[Byte], Array[Byte]], output: PrintStream): Unit = {
     import consumerRecord._
     defaultWriter.writeTo(consumerRecord, output)
-    logger.info({if (timestampType != TimestampType.NO_TIMESTAMP_TYPE) s"$timestampType:$timestamp, " else ""} +
-                  s"key:${if (key == null) "null" else new String(key, StandardCharsets.UTF_8)}, " +
-                  s"value:${if (value == null) "null" else new String(value, StandardCharsets.UTF_8)}")
+    logger.info({ if (timestampType != TimestampType.NO_TIMESTAMP_TYPE) s"$timestampType:$timestamp, " else "" } +
+      s"key:${if (key == null) "null" else new String(key, StandardCharsets.UTF_8)}, " +
+      s"value:${if (value == null) "null" else new String(value, StandardCharsets.UTF_8)}")
   }
 }
 
 class NoOpMessageFormatter extends MessageFormatter {
   override def init(props: Properties) {}
 
-  def writeTo(consumerRecord: ConsumerRecord[Array[Byte], Array[Byte]], output: PrintStream){}
+  def writeTo(consumerRecord: ConsumerRecord[Array[Byte], Array[Byte]], output: PrintStream) {}
 }
 
 class ChecksumMessageFormatter extends MessageFormatter {

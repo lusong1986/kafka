@@ -13,18 +13,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.producer
 
 import async.AsyncProducerConfig
 import java.util.Properties
-import kafka.utils.{CoreUtils, VerifiableProperties}
+import kafka.utils.{ CoreUtils, VerifiableProperties }
 import kafka.message.NoCompressionCodec
-import kafka.common.{InvalidConfigException, Config}
+import kafka.common.{ InvalidConfigException, Config }
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 object ProducerConfig extends Config {
   def validate(config: ProducerConfig) {
     validateClientId(config.clientId)
@@ -44,16 +44,16 @@ object ProducerConfig extends Config {
   def validateProducerType(producerType: String) {
     producerType match {
       case "sync" =>
-      case "async"=>
+      case "async" =>
       case _ => throw new InvalidConfigException("Invalid value " + producerType + " for producer.type, valid values are sync/async")
     }
   }
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.ProducerConfig instead.", "0.10.0.0")
 class ProducerConfig private (val props: VerifiableProperties)
-        extends AsyncProducerConfig with SyncProducerConfigShared {
+  extends AsyncProducerConfig with SyncProducerConfigShared {
   import ProducerConfig._
 
   def this(originalProps: Properties) {
@@ -61,7 +61,8 @@ class ProducerConfig private (val props: VerifiableProperties)
     props.verify()
   }
 
-  /** This is for bootstrapping and the producer will only use it for getting metadata
+  /**
+   * This is for bootstrapping and the producer will only use it for getting metadata
    * (topics, partitions and replicas). The socket connections for sending the actual data
    * will be established based on the broker information returned in the metadata. The
    * format is host1:port1,host2:port2, and the list can be a subset of brokers or
@@ -72,9 +73,11 @@ class ProducerConfig private (val props: VerifiableProperties)
   /** the partitioner class for partitioning events amongst sub-topics */
   val partitionerClass = props.getString("partitioner.class", "kafka.producer.DefaultPartitioner")
 
-  /** this parameter specifies whether the messages are sent asynchronously *
+  /**
+   * this parameter specifies whether the messages are sent asynchronously *
    * or not. Valid values are - async for asynchronous send                 *
-   *                            sync for synchronous send                   */
+   *                            sync for synchronous send
+   */
   val producerType = props.getString("producer.type", "sync")
 
   /**
@@ -83,7 +86,8 @@ class ProducerConfig private (val props: VerifiableProperties)
    */
   val compressionCodec = props.getCompressionCodec("compression.codec", NoCompressionCodec)
 
-  /** This parameter allows you to set whether compression should be turned *
+  /**
+   * This parameter allows you to set whether compression should be turned *
    *  on for particular topics
    *
    *  If the compression codec is anything other than NoCompressionCodec,
@@ -96,15 +100,17 @@ class ProducerConfig private (val props: VerifiableProperties)
    */
   val compressedTopics = CoreUtils.parseCsvList(props.getString("compressed.topics", null))
 
-  /** The leader may be unavailable transiently, which can fail the sending of a message.
-    *  This property specifies the number of retries when such failures occur.
-    */
+  /**
+   * The leader may be unavailable transiently, which can fail the sending of a message.
+   *  This property specifies the number of retries when such failures occur.
+   */
   val messageSendMaxRetries = props.getInt("message.send.max.retries", 3)
 
-  /** Before each retry, the producer refreshes the metadata of relevant topics. Since leader
-    * election takes a bit of time, this property specifies the amount of time that the producer
-    * waits before refreshing the metadata.
-    */
+  /**
+   * Before each retry, the producer refreshes the metadata of relevant topics. Since leader
+   * election takes a bit of time, this property specifies the amount of time that the producer
+   * waits before refreshing the metadata.
+   */
   val retryBackoffMs = props.getInt("retry.backoff.ms", 100)
 
   /**

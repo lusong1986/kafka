@@ -17,8 +17,8 @@
 package kafka.producer
 
 import kafka.metrics.KafkaMetricsGroup
-import kafka.common.{ClientIdTopic, ClientIdAllTopics, ClientIdAndTopic}
-import kafka.utils.{Pool, threadsafe}
+import kafka.common.{ ClientIdTopic, ClientIdAllTopics, ClientIdAndTopic }
+import kafka.utils.{ Pool, threadsafe }
 import java.util.concurrent.TimeUnit
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.10.0.0")

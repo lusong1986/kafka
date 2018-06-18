@@ -27,10 +27,11 @@ import scala.collection.JavaConverters._
 
 object ByteBufferMessageSet {
 
-  private def create(offsetAssigner: OffsetAssigner,
-                     compressionCodec: CompressionCodec,
-                     timestampType: TimestampType,
-                     messages: Message*): ByteBuffer = {
+  private def create(
+    offsetAssigner: OffsetAssigner,
+    compressionCodec: CompressionCodec,
+    timestampType: TimestampType,
+    messages: Message*): ByteBuffer = {
     if (messages.isEmpty)
       MessageSet.Empty.buffer
     else {
@@ -128,21 +129,22 @@ private class OffsetAssigner(offsets: Seq[Long]) {
  */
 class ByteBufferMessageSet(val buffer: ByteBuffer) extends MessageSet with Logging {
 
-  private[kafka] def this(compressionCodec: CompressionCodec,
-                          offsetCounter: LongRef,
-                          timestampType: TimestampType,
-                          messages: Message*) {
+  private[kafka] def this(
+    compressionCodec: CompressionCodec,
+    offsetCounter: LongRef,
+    timestampType: TimestampType,
+    messages: Message*) {
     this(ByteBufferMessageSet.create(OffsetAssigner(offsetCounter, messages.size), compressionCodec,
-      timestampType, messages:_*))
+      timestampType, messages: _*))
   }
 
   def this(compressionCodec: CompressionCodec, offsetCounter: LongRef, messages: Message*) {
-    this(compressionCodec, offsetCounter, TimestampType.CREATE_TIME, messages:_*)
+    this(compressionCodec, offsetCounter, TimestampType.CREATE_TIME, messages: _*)
   }
 
   def this(compressionCodec: CompressionCodec, offsetSeq: Seq[Long], messages: Message*) {
     this(ByteBufferMessageSet.create(new OffsetAssigner(offsetSeq), compressionCodec,
-      TimestampType.CREATE_TIME, messages:_*))
+      TimestampType.CREATE_TIME, messages: _*))
   }
 
   def this(compressionCodec: CompressionCodec, messages: Message*) {

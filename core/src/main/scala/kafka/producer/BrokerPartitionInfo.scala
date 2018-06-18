@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.producer
 
 import org.apache.kafka.common.protocol.Errors
@@ -25,10 +25,11 @@ import kafka.utils.Logging
 import kafka.client.ClientUtils
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.10.0.0")
-class BrokerPartitionInfo(producerConfig: ProducerConfig,
-                          producerPool: ProducerPool,
-                          topicPartitionInfo: HashMap[String, TopicMetadata])
-        extends Logging {
+class BrokerPartitionInfo(
+  producerConfig: ProducerConfig,
+  producerPool: ProducerPool,
+  topicPartitionInfo: HashMap[String, TopicMetadata])
+  extends Logging {
   val brokerList = producerConfig.brokerList
   val brokers = ClientUtils.parseBrokerList(brokerList)
 
@@ -55,8 +56,8 @@ class BrokerPartitionInfo(producerConfig: ProducerConfig,
           }
       }
     val partitionMetadata = metadata.partitionsMetadata
-    if(partitionMetadata.isEmpty) {
-      if(metadata.error != Errors.NONE) {
+    if (partitionMetadata.isEmpty) {
+      if (metadata.error != Errors.NONE) {
         throw new KafkaException(metadata.error.exception)
       } else {
         throw new KafkaException("Topic metadata %s has empty partition metadata and no error code".format(metadata))
@@ -83,13 +84,13 @@ class BrokerPartitionInfo(producerConfig: ProducerConfig,
     val topicMetadataResponse = ClientUtils.fetchTopicMetadata(topics, brokers, producerConfig, correlationId)
     topicsMetadata = topicMetadataResponse.topicsMetadata
     // throw partition specific exception
-    topicsMetadata.foreach(tmd =>{
+    topicsMetadata.foreach(tmd => {
       trace("Metadata for topic %s is %s".format(tmd.topic, tmd))
-      if(tmd.error == Errors.NONE) {
+      if (tmd.error == Errors.NONE) {
         topicPartitionInfo.put(tmd.topic, tmd)
       } else
         warn("Error while fetching metadata [%s] for topic [%s]: %s ".format(tmd, tmd.topic, tmd.error.exception.getClass))
-      tmd.partitionsMetadata.foreach(pmd =>{
+      tmd.partitionsMetadata.foreach(pmd => {
         if (pmd.error != Errors.NONE && pmd.error == Errors.LEADER_NOT_AVAILABLE) {
           warn("Error while fetching metadata %s for topic partition [%s,%d]: [%s]".format(pmd, tmd.topic, pmd.partitionId,
             pmd.error.exception.getClass))

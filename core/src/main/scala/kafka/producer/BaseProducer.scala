@@ -22,29 +22,30 @@ import java.util.Properties
 // A base producer used whenever we need to have options for both old and new producers;
 // this class will be removed once we fully rolled out 0.9
 @deprecated("This trait has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
 trait BaseProducer {
   def send(topic: String, key: Array[Byte], value: Array[Byte])
   def close()
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
 class NewShinyProducer(producerProps: Properties) extends BaseProducer {
-  import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+  import org.apache.kafka.clients.producer.{ KafkaProducer, ProducerRecord }
   import org.apache.kafka.clients.producer.internals.ErrorLoggingCallback
 
   // decide whether to send synchronously based on producer properties
   val sync = producerProps.getProperty("producer.type", "async").equals("sync")
 
-  val producer = new KafkaProducer[Array[Byte],Array[Byte]](producerProps)
+  val producer = new KafkaProducer[Array[Byte], Array[Byte]](producerProps)
 
   override def send(topic: String, key: Array[Byte], value: Array[Byte]) {
-    val record = new ProducerRecord[Array[Byte],Array[Byte]](topic, key, value)
-    if(sync) {
+    val record = new ProducerRecord[Array[Byte], Array[Byte]](topic, key, value)
+    if (sync) {
       this.producer.send(record).get()
     } else {
-      this.producer.send(record,
+      this.producer.send(
+        record,
         new ErrorLoggingCallback(topic, key, value, false))
     }
   }
@@ -55,7 +56,7 @@ class NewShinyProducer(producerProps: Properties) extends BaseProducer {
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
+  "Please use org.apache.kafka.clients.producer.KafkaProducer instead.", "0.10.0.0")
 class OldProducer(producerProps: Properties) extends BaseProducer {
 
   // default to byte array partitioner

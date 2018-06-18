@@ -18,12 +18,12 @@
 package kafka.tools
 
 import kafka.metrics.KafkaMetricsReporter
-import kafka.producer.{NewShinyProducer, OldProducer}
-import kafka.utils.{CommandLineUtils, Exit, Logging, ToolsUtils, VerifiableProperties}
+import kafka.producer.{ NewShinyProducer, OldProducer }
+import kafka.utils.{ CommandLineUtils, Exit, Logging, ToolsUtils, VerifiableProperties }
 import kafka.utils.Implicits._
 import kafka.message.CompressionCodec
 import kafka.serializer._
-import java.util.concurrent.{CountDownLatch, Executors}
+import java.util.concurrent.{ CountDownLatch, Executors }
 import java.util.concurrent.atomic.AtomicLong
 import java.util._
 import java.text.SimpleDateFormat
@@ -150,7 +150,7 @@ object ProducerPerformance extends Logging {
     val dateFormat = new SimpleDateFormat(options.valueOf(dateFormatOpt))
     val hideHeader = options.has(hideHeaderOpt)
     val brokerList = options.valueOf(brokerListOpt)
-    ToolsUtils.validatePortOrDie(parser,brokerList)
+    ToolsUtils.validatePortOrDie(parser, brokerList)
     val messageSize = options.valueOf(messageSizeOpt).intValue
     var isFixedSize = !options.has(varyMessageSizeOpt)
     var isSync = options.has(syncOpt)
@@ -190,7 +190,8 @@ object ProducerPerformance extends Logging {
     val messageSendGapMs = options.valueOf(messageSendGapMsOpt).intValue()
   }
 
-  class ProducerThread(val threadId: Int,
+  class ProducerThread(
+    val threadId: Int,
     val config: ProducerPerfConfig,
     val totalBytesSent: AtomicLong,
     val totalMessagesSent: AtomicLong,

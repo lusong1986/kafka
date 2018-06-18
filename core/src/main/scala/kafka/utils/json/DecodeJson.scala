@@ -22,7 +22,7 @@ import scala.language.higherKinds
 import JavaConverters._
 import generic.CanBuildFrom
 
-import com.fasterxml.jackson.databind.{JsonMappingException, JsonNode}
+import com.fasterxml.jackson.databind.{ JsonMappingException, JsonNode }
 
 /**
  * A type class for parsing JSON. This should typically be used via `JsonValue.apply`.

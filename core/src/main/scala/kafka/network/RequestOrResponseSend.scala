@@ -42,7 +42,7 @@ class RequestOrResponseSend(val dest: String, val buffer: ByteBuffer) extends Ne
 
   def writeCompletely(channel: GatheringByteChannel): Long = {
     var totalWritten = 0L
-    while(!completed()) {
+    while (!completed()) {
       val written = writeTo(channel)
       trace(written + " bytes written.")
       totalWritten += written
