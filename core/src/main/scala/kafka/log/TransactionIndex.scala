@@ -16,17 +16,21 @@
  */
 package kafka.log
 
-import java.io.{File, IOException}
+import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import java.nio.file.{Files, StandardOpenOption}
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 
-import kafka.utils.{Logging, nonthreadsafe}
+import scala.collection.mutable.ListBuffer
+
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.requests.FetchResponse.AbortedTransaction
 import org.apache.kafka.common.utils.Utils
 
-import scala.collection.mutable.ListBuffer
+import kafka.utils.Logging
+import kafka.utils.nonthreadsafe
 
 private[log] case class TxnIndexSearchResult(abortedTransactions: List[AbortedTxn], isComplete: Boolean)
 
@@ -213,10 +217,11 @@ private[log] object AbortedTxn {
 private[log] class AbortedTxn(val buffer: ByteBuffer) {
   import AbortedTxn._
 
-  def this(producerId: Long,
-           firstOffset: Long,
-           lastOffset: Long,
-           lastStableOffset: Long) = {
+  def this(
+    producerId: Long,
+    firstOffset: Long,
+    lastOffset: Long,
+    lastStableOffset: Long) = {
     this(ByteBuffer.allocate(AbortedTxn.TotalSize))
     buffer.putShort(CurrentVersion)
     buffer.putLong(producerId)
