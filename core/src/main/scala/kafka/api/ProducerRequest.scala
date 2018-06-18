@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -44,23 +44,24 @@ object ProducerRequest {
         val partition = buffer.getInt
         val messageSetSize = buffer.getInt
         val messageSetBuffer = new Array[Byte](messageSetSize)
-        buffer.get(messageSetBuffer,0,messageSetSize)
+        buffer.get(messageSetBuffer, 0, messageSetSize)
         (TopicAndPartition(topic, partition), new ByteBufferMessageSet(ByteBuffer.wrap(messageSetBuffer)))
       })
     })
 
-    ProducerRequest(versionId, correlationId, clientId, requiredAcks, ackTimeoutMs, collection.mutable.Map(partitionDataPairs:_*))
+    ProducerRequest(versionId, correlationId, clientId, requiredAcks, ackTimeoutMs, collection.mutable.Map(partitionDataPairs: _*))
   }
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class ProducerRequest(versionId: Short = ProducerRequest.CurrentVersion,
-                           correlationId: Int,
-                           clientId: String,
-                           requiredAcks: Short,
-                           ackTimeoutMs: Int,
-                           data: collection.mutable.Map[TopicAndPartition, ByteBufferMessageSet])
-    extends RequestOrResponse(Some(ApiKeys.PRODUCE.id)) {
+case class ProducerRequest(
+  versionId: Short = ProducerRequest.CurrentVersion,
+  correlationId: Int,
+  clientId: String,
+  requiredAcks: Short,
+  ackTimeoutMs: Int,
+  data: collection.mutable.Map[TopicAndPartition, ByteBufferMessageSet])
+  extends RequestOrResponse(Some(ApiKeys.PRODUCE.id)) {
 
   /**
    * Partitions the data into a map of maps (one for each topic).
@@ -68,11 +69,12 @@ case class ProducerRequest(versionId: Short = ProducerRequest.CurrentVersion,
   private lazy val dataGroupedByTopic = data.groupBy(_._1.topic)
   val topicPartitionMessageSizeMap = data.map(r => r._1 -> r._2.sizeInBytes).toMap
 
-  def this(correlationId: Int,
-           clientId: String,
-           requiredAcks: Short,
-           ackTimeoutMs: Int,
-           data: collection.mutable.Map[TopicAndPartition, ByteBufferMessageSet]) =
+  def this(
+    correlationId: Int,
+    clientId: String,
+    requiredAcks: Short,
+    ackTimeoutMs: Int,
+    data: collection.mutable.Map[TopicAndPartition, ByteBufferMessageSet]) =
     this(ProducerRequest.CurrentVersion, correlationId, clientId, requiredAcks, ackTimeoutMs, data)
 
   def writeTo(buffer: ByteBuffer) {
@@ -102,24 +104,24 @@ case class ProducerRequest(versionId: Short = ProducerRequest.CurrentVersion,
 
   def sizeInBytes: Int = {
     2 + /* versionId */
-    4 + /* correlationId */
-    shortStringLength(clientId) + /* client id */
-    2 + /* requiredAcks */
-    4 + /* ackTimeoutMs */
-    4 + /* number of topics */
-    dataGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
-      foldedTopics +
-      shortStringLength(currTopic._1) +
-      4 + /* the number of partitions */
-      {
-        currTopic._2.foldLeft(0)((foldedPartitions, currPartition) => {
-          foldedPartitions +
-          4 + /* partition id */
-          4 + /* byte-length of serialized messages */
-          currPartition._2.sizeInBytes
-        })
-      }
-    })
+      4 + /* correlationId */
+      shortStringLength(clientId) + /* client id */
+      2 + /* requiredAcks */
+      4 + /* ackTimeoutMs */
+      4 + /* number of topics */
+      dataGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
+        foldedTopics +
+          shortStringLength(currTopic._1) +
+          4 + /* the number of partitions */
+          {
+            currTopic._2.foldLeft(0)((foldedPartitions, currPartition) => {
+              foldedPartitions +
+                4 + /* partition id */
+                4 + /* byte-length of serialized messages */
+                currPartition._2.sizeInBytes
+            })
+          }
+      })
   }
 
   def numPartitions = data.size
@@ -136,12 +138,12 @@ case class ProducerRequest(versionId: Short = ProducerRequest.CurrentVersion,
     producerRequest.append("; ClientId: " + clientId)
     producerRequest.append("; RequiredAcks: " + requiredAcks)
     producerRequest.append("; AckTimeoutMs: " + ackTimeoutMs + " ms")
-    if(details)
+    if (details)
       producerRequest.append("; TopicAndPartition: " + topicPartitionMessageSizeMap.mkString(","))
     producerRequest.toString()
   }
 
-  def emptyData(){
+  def emptyData() {
     data.clear()
   }
 }

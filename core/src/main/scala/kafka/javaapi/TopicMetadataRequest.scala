@@ -23,11 +23,12 @@ import org.apache.kafka.common.protocol.ApiKeys
 
 import scala.collection.JavaConverters._
 
-class TopicMetadataRequest(val versionId: Short,
-                           val correlationId: Int,
-                           val clientId: String,
-                           val topics: java.util.List[String])
-    extends RequestOrResponse(Some(ApiKeys.METADATA.id)) {
+class TopicMetadataRequest(
+  val versionId: Short,
+  val correlationId: Int,
+  val clientId: String,
+  val topics: java.util.List[String])
+  extends RequestOrResponse(Some(ApiKeys.METADATA.id)) {
 
   val underlying: kafka.api.TopicMetadataRequest = new kafka.api.TopicMetadataRequest(versionId, correlationId, clientId, topics.asScala)
 
@@ -51,13 +52,13 @@ class TopicMetadataRequest(val versionId: Short,
     topicMetadataRequest.append("; Version: " + versionId)
     topicMetadataRequest.append("; CorrelationId: " + correlationId)
     topicMetadataRequest.append("; ClientId: " + clientId)
-    if(details) {
+    if (details) {
       topicMetadataRequest.append("; Topics: ")
       val topicIterator = topics.iterator()
       while (topicIterator.hasNext) {
         val topic = topicIterator.next()
         topicMetadataRequest.append("%s".format(topic))
-        if(topicIterator.hasNext)
+        if (topicIterator.hasNext)
           topicMetadataRequest.append(",")
       }
     }

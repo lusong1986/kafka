@@ -18,7 +18,7 @@
 package kafka.admin
 
 import kafka.log.LogConfig
-import kafka.server.{ConfigEntityName, ConfigType, DynamicConfig}
+import kafka.server.{ ConfigEntityName, ConfigType, DynamicConfig }
 import kafka.utils._
 import kafka.utils.ZkUtils._
 import java.util.Random
@@ -27,7 +27,7 @@ import java.util.Properties
 import kafka.common.TopicAlreadyMarkedForDeletionException
 import org.apache.kafka.common.errors._
 
-import collection.{Map, Set, mutable, _}
+import collection.{ Map, Set, mutable, _ }
 import scala.collection.JavaConverters._
 import org.I0Itec.zkclient.exception.ZkNodeExistsException
 import org.apache.kafka.common.internals.Topic
@@ -126,11 +126,12 @@ object AdminUtils extends Logging with AdminUtilities {
    *                                 assign each replica to a unique rack.
    *
    */
-  def assignReplicasToBrokers(brokerMetadatas: Seq[BrokerMetadata],
-                              nPartitions: Int,
-                              replicationFactor: Int,
-                              fixedStartIndex: Int = -1,
-                              startPartitionId: Int = -1): Map[Int, Seq[Int]] = {
+  def assignReplicasToBrokers(
+    brokerMetadatas: Seq[BrokerMetadata],
+    nPartitions: Int,
+    replicationFactor: Int,
+    fixedStartIndex: Int = -1,
+    startPartitionId: Int = -1): Map[Int, Seq[Int]] = {
     if (nPartitions <= 0)
       throw new InvalidPartitionsException("Number of partitions must be larger than 0.")
     if (replicationFactor <= 0)
@@ -148,11 +149,12 @@ object AdminUtils extends Logging with AdminUtilities {
     }
   }
 
-  private def assignReplicasToBrokersRackUnaware(nPartitions: Int,
-                                                 replicationFactor: Int,
-                                                 brokerList: Seq[Int],
-                                                 fixedStartIndex: Int,
-                                                 startPartitionId: Int): Map[Int, Seq[Int]] = {
+  private def assignReplicasToBrokersRackUnaware(
+    nPartitions: Int,
+    replicationFactor: Int,
+    brokerList: Seq[Int],
+    fixedStartIndex: Int,
+    startPartitionId: Int): Map[Int, Seq[Int]] = {
     val ret = mutable.Map[Int, Seq[Int]]()
     val brokerArray = brokerList.toArray
     val startIndex = if (fixedStartIndex >= 0) fixedStartIndex else rand.nextInt(brokerArray.length)
@@ -171,13 +173,15 @@ object AdminUtils extends Logging with AdminUtilities {
     ret
   }
 
-  private def assignReplicasToBrokersRackAware(nPartitions: Int,
-                                               replicationFactor: Int,
-                                               brokerMetadatas: Seq[BrokerMetadata],
-                                               fixedStartIndex: Int,
-                                               startPartitionId: Int): Map[Int, Seq[Int]] = {
-    val brokerRackMap = brokerMetadatas.collect { case BrokerMetadata(id, Some(rack)) =>
-      id -> rack
+  private def assignReplicasToBrokersRackAware(
+    nPartitions: Int,
+    replicationFactor: Int,
+    brokerMetadatas: Seq[BrokerMetadata],
+    fixedStartIndex: Int,
+    startPartitionId: Int): Map[Int, Seq[Int]] = {
+    val brokerRackMap = brokerMetadatas.collect {
+      case BrokerMetadata(id, Some(rack)) =>
+        id -> rack
     }.toMap
     val numRacks = brokerRackMap.values.toSet.size
     val arrangedBrokerList = getRackAlternatedBrokerList(brokerRackMap)
@@ -205,7 +209,7 @@ object AdminUtils extends Logging with AdminUtilities {
           //    that do not have any replica, or
           // 2. the broker has already assigned a replica AND there is one or more brokers that do not have replica assigned
           if ((!racksWithReplicas.contains(rack) || racksWithReplicas.size == numRacks)
-              && (!brokersWithReplicas.contains(broker) || brokersWithReplicas.size == numBrokers)) {
+            && (!brokersWithReplicas.contains(broker) || brokersWithReplicas.size == numBrokers)) {
             replicaBuffer += broker
             racksWithReplicas += rack
             brokersWithReplicas += broker
@@ -221,23 +225,24 @@ object AdminUtils extends Logging with AdminUtilities {
   }
 
   /**
-    * Given broker and rack information, returns a list of brokers alternated by the rack. Assume
-    * this is the rack and its brokers:
-    *
-    * rack1: 0, 1, 2
-    * rack2: 3, 4, 5
-    * rack3: 6, 7, 8
-    *
-    * This API would return the list of 0, 3, 6, 1, 4, 7, 2, 5, 8
-    *
-    * This is essential to make sure that the assignReplicasToBrokers API can use such list and
-    * assign replicas to brokers in a simple round-robin fashion, while ensuring an even
-    * distribution of leader and replica counts on each broker and that replicas are
-    * distributed to all racks.
-    */
+   * Given broker and rack information, returns a list of brokers alternated by the rack. Assume
+   * this is the rack and its brokers:
+   *
+   * rack1: 0, 1, 2
+   * rack2: 3, 4, 5
+   * rack3: 6, 7, 8
+   *
+   * This API would return the list of 0, 3, 6, 1, 4, 7, 2, 5, 8
+   *
+   * This is essential to make sure that the assignReplicasToBrokers API can use such list and
+   * assign replicas to brokers in a simple round-robin fashion, while ensuring an even
+   * distribution of leader and replica counts on each broker and that replicas are
+   * distributed to all racks.
+   */
   private[admin] def getRackAlternatedBrokerList(brokerRackMap: Map[Int, String]): IndexedSeq[Int] = {
-    val brokersIteratorByRack = getInverseMap(brokerRackMap).map { case (rack, brokers) =>
-      (rack, brokers.toIterator)
+    val brokersIteratorByRack = getInverseMap(brokerRackMap).map {
+      case (rack, brokers) =>
+        (rack, brokers.toIterator)
     }
     val racks = brokersIteratorByRack.keys.toArray.sorted
     val result = new mutable.ArrayBuffer[Int]
@@ -256,27 +261,29 @@ object AdminUtils extends Logging with AdminUtilities {
       .groupBy { case (rack, _) => rack }
       .map { case (rack, rackAndIdList) => (rack, rackAndIdList.map { case (_, id) => id }.sorted) }
   }
- /**
-  * Add partitions to existing topic with optional replica assignment
-  *
-  * @param zkUtils Zookeeper utilities
-  * @param topic Topic for adding partitions to
-  * @param existingAssignment A map from partition id to its assigned replicas
-  * @param allBrokers All brokers in the cluster
-  * @param numPartitions Number of partitions to be set
-  * @param replicaAssignment Manual replica assignment, or none
-  * @param validateOnly If true, validate the parameters without actually adding the partitions
-  * @return the updated replica assignment
-  */
+  /**
+   * Add partitions to existing topic with optional replica assignment
+   *
+   * @param zkUtils Zookeeper utilities
+   * @param topic Topic for adding partitions to
+   * @param existingAssignment A map from partition id to its assigned replicas
+   * @param allBrokers All brokers in the cluster
+   * @param numPartitions Number of partitions to be set
+   * @param replicaAssignment Manual replica assignment, or none
+   * @param validateOnly If true, validate the parameters without actually adding the partitions
+   * @return the updated replica assignment
+   */
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
-  def addPartitions(zkUtils: ZkUtils,
-                    topic: String,
-                    existingAssignment: Map[Int, Seq[Int]],
-                    allBrokers: Seq[BrokerMetadata],
-                    numPartitions: Int = 1,
-                    replicaAssignment: Option[Map[Int, Seq[Int]]] = None,
-                    validateOnly: Boolean = false): Map[Int, Seq[Int]] = {
-    val existingAssignmentPartition0 = existingAssignment.getOrElse(0,
+  def addPartitions(
+    zkUtils: ZkUtils,
+    topic: String,
+    existingAssignment: Map[Int, Seq[Int]],
+    allBrokers: Seq[BrokerMetadata],
+    numPartitions: Int = 1,
+    replicaAssignment: Option[Map[Int, Seq[Int]]] = None,
+    validateOnly: Boolean = false): Map[Int, Seq[Int]] = {
+    val existingAssignmentPartition0 = existingAssignment.getOrElse(
+      0,
       throw new AdminOperationException(
         s"Unexpected existing replica assignment for topic '$topic', partition id 0 is missing. " +
           s"Assignment: $existingAssignment"))
@@ -310,13 +317,13 @@ object AdminUtils extends Logging with AdminUtilities {
   }
 
   /**
-    * Parse a replica assignment string of the form:
-    * {{{
-    * broker_id_for_part1_replica1:broker_id_for_part1_replica2,
-    * broker_id_for_part2_replica1:broker_id_for_part2_replica2,
-    * ...
-    * }}}
-    */
+   * Parse a replica assignment string of the form:
+   * {{{
+   * broker_id_for_part1_replica1:broker_id_for_part1_replica2,
+   * broker_id_for_part2_replica1:broker_id_for_part2_replica2,
+   * ...
+   * }}}
+   */
   def parseReplicaAssignment(replicaAssignmentsString: String, startPartitionId: Int): Map[Int, Seq[Int]] = {
     val assignmentStrings = replicaAssignmentsString.split(",")
     val assignmentMap = mutable.Map[Int, Seq[Int]]()
@@ -329,24 +336,26 @@ object AdminUtils extends Logging with AdminUtilities {
     assignmentMap
   }
 
-  private def validateReplicaAssignment(replicaAssignment: Map[Int, Seq[Int]],
-                                        existingAssignmentPartition0: Seq[Int],
-                                        availableBrokerIds: Set[Int]): Unit = {
+  private def validateReplicaAssignment(
+    replicaAssignment: Map[Int, Seq[Int]],
+    existingAssignmentPartition0: Seq[Int],
+    availableBrokerIds: Set[Int]): Unit = {
 
-    replicaAssignment.foreach { case (partitionId, replicas) =>
-      if (replicas.isEmpty)
-        throw new InvalidReplicaAssignmentException(
-          s"Cannot have replication factor of 0 for partition id $partitionId.")
-      if (replicas.size != replicas.toSet.size)
-        throw new InvalidReplicaAssignmentException(
-          s"Duplicate brokers not allowed in replica assignment: " +
-            s"${replicas.mkString(", ")} for partition id $partitionId.")
-      if (!replicas.toSet.subsetOf(availableBrokerIds))
-        throw new BrokerNotAvailableException(
-          s"Some brokers specified for partition id $partitionId are not available. " +
-            s"Specified brokers: ${replicas.mkString(", ")}, " +
-            s"available brokers: ${availableBrokerIds.mkString(", ")}.")
-      partitionId -> replicas.size
+    replicaAssignment.foreach {
+      case (partitionId, replicas) =>
+        if (replicas.isEmpty)
+          throw new InvalidReplicaAssignmentException(
+            s"Cannot have replication factor of 0 for partition id $partitionId.")
+        if (replicas.size != replicas.toSet.size)
+          throw new InvalidReplicaAssignmentException(
+            s"Duplicate brokers not allowed in replica assignment: " +
+              s"${replicas.mkString(", ")} for partition id $partitionId.")
+        if (!replicas.toSet.subsetOf(availableBrokerIds))
+          throw new BrokerNotAvailableException(
+            s"Some brokers specified for partition id $partitionId are not available. " +
+              s"Specified brokers: ${replicas.mkString(", ")}, " +
+              s"available brokers: ${availableBrokerIds.mkString(", ")}.")
+        partitionId -> replicas.size
     }
     val badRepFactors = replicaAssignment.collect {
       case (partition, replicas) if replicas.size != existingAssignmentPartition0.size => partition -> replicas.size
@@ -363,18 +372,18 @@ object AdminUtils extends Logging with AdminUtilities {
 
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def deleteTopic(zkUtils: ZkUtils, topic: String) {
-      if (topicExists(zkUtils, topic)) {
-        try {
-          zkUtils.createPersistentPath(getDeleteTopicPath(topic))
-        } catch {
-          case _: ZkNodeExistsException => throw new TopicAlreadyMarkedForDeletionException(
-            "topic %s is already marked for deletion".format(topic))
-          case e2: Throwable => throw new AdminOperationException(e2)
-        }
-      } else {
-        throw new UnknownTopicOrPartitionException(s"Topic `$topic` to delete does not exist")
+    if (topicExists(zkUtils, topic)) {
+      try {
+        zkUtils.createPersistentPath(getDeleteTopicPath(topic))
+      } catch {
+        case _: ZkNodeExistsException => throw new TopicAlreadyMarkedForDeletionException(
+          "topic %s is already marked for deletion".format(topic))
+        case e2: Throwable => throw new AdminOperationException(e2)
       }
+    } else {
+      throw new UnknownTopicOrPartitionException(s"Topic `$topic` to delete does not exist")
     }
+  }
 
   @deprecated("This method has been deprecated and will be removed in a future release.", "0.11.0.0")
   def isConsumerGroupActive(zkUtils: ZkUtils, group: String) = {
@@ -394,8 +403,7 @@ object AdminUtils extends Logging with AdminUtilities {
       val dir = new ZKGroupDirs(group)
       zkUtils.deletePathRecursive(dir.consumerGroupDir)
       true
-    }
-    else false
+    } else false
   }
 
   /**
@@ -412,14 +420,12 @@ object AdminUtils extends Logging with AdminUtilities {
     val topics = zkUtils.getTopicsByConsumerGroup(group)
     if (topics == Seq(topic)) {
       deleteConsumerGroupInZK(zkUtils, group)
-    }
-    else if (!isConsumerGroupActive(zkUtils, group)) {
+    } else if (!isConsumerGroupActive(zkUtils, group)) {
       val dir = new ZKGroupTopicDirs(group, topic)
       zkUtils.deletePathRecursive(dir.consumerOwnerDir)
       zkUtils.deletePathRecursive(dir.consumerOffsetDir)
       true
-    }
-    else false
+    } else false
   }
 
   /**
@@ -440,7 +446,7 @@ object AdminUtils extends Logging with AdminUtilities {
 
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def getBrokerMetadatas(zkUtils: ZkUtils, rackAwareMode: RackAwareMode = RackAwareMode.Enforced,
-                         brokerList: Option[Seq[Int]] = None): Seq[BrokerMetadata] = {
+    brokerList: Option[Seq[Int]] = None): Seq[BrokerMetadata] = {
     val allBrokers = zkUtils.getAllBrokersInCluster()
     val brokers = brokerList.map(brokerIds => allBrokers.filter(b => brokerIds.contains(b.id))).getOrElse(allBrokers)
     val brokersWithRack = brokers.filter(_.rack.nonEmpty)
@@ -458,23 +464,25 @@ object AdminUtils extends Logging with AdminUtilities {
   }
 
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
-  def createTopic(zkUtils: ZkUtils,
-                  topic: String,
-                  partitions: Int,
-                  replicationFactor: Int,
-                  topicConfig: Properties = new Properties,
-                  rackAwareMode: RackAwareMode = RackAwareMode.Enforced) {
+  def createTopic(
+    zkUtils: ZkUtils,
+    topic: String,
+    partitions: Int,
+    replicationFactor: Int,
+    topicConfig: Properties = new Properties,
+    rackAwareMode: RackAwareMode = RackAwareMode.Enforced) {
     val brokerMetadatas = getBrokerMetadatas(zkUtils, rackAwareMode)
     val replicaAssignment = AdminUtils.assignReplicasToBrokers(brokerMetadatas, partitions, replicationFactor)
     AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, replicaAssignment, topicConfig)
   }
 
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
-  def validateCreateOrUpdateTopic(zkUtils: ZkUtils,
-                                  topic: String,
-                                  partitionReplicaAssignment: Map[Int, Seq[Int]],
-                                  config: Properties,
-                                  update: Boolean): Unit = {
+  def validateCreateOrUpdateTopic(
+    zkUtils: ZkUtils,
+    topic: String,
+    partitionReplicaAssignment: Map[Int, Seq[Int]],
+    config: Properties,
+    update: Boolean): Unit = {
     // validate arguments
     Topic.validate(topic)
 
@@ -499,9 +507,7 @@ object AdminUtils extends Logging with AdminUtilities {
 
     partitionReplicaAssignment.values.foreach(reps =>
       if (reps.size != reps.toSet.size)
-        throw new InvalidReplicaAssignmentException("Duplicate replica assignment found: " + partitionReplicaAssignment)
-    )
-
+        throw new InvalidReplicaAssignmentException("Duplicate replica assignment found: " + partitionReplicaAssignment))
 
     // Configs only matter if a topic is being created. Changing configs via AlterTopic is not supported
     if (!update)
@@ -509,11 +515,12 @@ object AdminUtils extends Logging with AdminUtilities {
   }
 
   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
-  def createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils: ZkUtils,
-                                                     topic: String,
-                                                     partitionReplicaAssignment: Map[Int, Seq[Int]],
-                                                     config: Properties = new Properties,
-                                                     update: Boolean = false) {
+  def createOrUpdateTopicPartitionAssignmentPathInZK(
+    zkUtils: ZkUtils,
+    topic: String,
+    partitionReplicaAssignment: Map[Int, Seq[Int]],
+    config: Properties = new Properties,
+    update: Boolean = false) {
     validateCreateOrUpdateTopic(zkUtils, topic, partitionReplicaAssignment, config, update)
 
     // Configs only matter if a topic is being created. Changing configs via AlterTopic is not supported
@@ -556,7 +563,7 @@ object AdminUtils extends Logging with AdminUtilities {
    *                 existing configs need to be deleted, it should be done prior to invoking this API
    *
    */
-   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
+  @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def changeClientIdConfig(zkUtils: ZkUtils, sanitizedClientId: String, configs: Properties) {
     DynamicConfig.Client.validate(configs)
     changeEntityConfig(zkUtils, ConfigType.Client, sanitizedClientId, configs)
@@ -573,7 +580,7 @@ object AdminUtils extends Logging with AdminUtilities {
    *                 existing configs need to be deleted, it should be done prior to invoking this API
    *
    */
-   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
+  @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def changeUserOrUserClientIdConfig(zkUtils: ZkUtils, sanitizedEntityName: String, configs: Properties) {
     if (sanitizedEntityName == ConfigEntityName.Default || sanitizedEntityName.contains("/clients"))
       DynamicConfig.Client.validate(configs)
@@ -599,21 +606,21 @@ object AdminUtils extends Logging with AdminUtilities {
    *                 existing configs need to be deleted, it should be done prior to invoking this API
    *
    */
-   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
+  @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def changeTopicConfig(zkUtils: ZkUtils, topic: String, configs: Properties) {
     validateTopicConfig(zkUtils, topic, configs)
     changeEntityConfig(zkUtils, ConfigType.Topic, topic, configs)
   }
 
   /**
-    * Override the broker config on some set of brokers. These overrides will be persisted between sessions, and will
-    * override any defaults entered in the broker's config files
-    *
-    * @param zkUtils: Zookeeper utilities used to write the config to ZK
-    * @param brokers: The list of brokers to apply config changes to
-    * @param configs: The config to change, as properties
-    */
-   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
+   * Override the broker config on some set of brokers. These overrides will be persisted between sessions, and will
+   * override any defaults entered in the broker's config files
+   *
+   * @param zkUtils: Zookeeper utilities used to write the config to ZK
+   * @param brokers: The list of brokers to apply config changes to
+   * @param configs: The config to change, as properties
+   */
+  @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def changeBrokerConfig(zkUtils: ZkUtils, brokers: Seq[Int], configs: Properties): Unit = {
     DynamicConfig.Broker.validate(configs)
     brokers.foreach { broker =>
@@ -633,7 +640,7 @@ object AdminUtils extends Logging with AdminUtilities {
     zkUtils.createSequentialPersistentPath(seqNode, content)
   }
 
-  def getConfigChangeZnodeData(sanitizedEntityPath: String) : Map[String, Any] = {
+  def getConfigChangeZnodeData(sanitizedEntityPath: String): Map[String, Any] = {
     Map("version" -> 2, "entity_path" -> sanitizedEntityPath)
   }
 
@@ -649,7 +656,7 @@ object AdminUtils extends Logging with AdminUtilities {
    * Read the entity (topic, broker, client, user or <user, client>) config (if any) from zk
    * sanitizedEntityName is <topic>, <broker>, <client-id>, <user> or <user>/clients/<client-id>.
    */
-   @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
+  @deprecated("This method is deprecated and will be replaced by kafka.zk.AdminZkClient.", "1.1.0")
   def fetchEntityConfig(zkUtils: ZkUtils, rootEntityType: String, sanitizedEntityName: String): Properties = {
     val entityConfigPath = getEntityConfigPath(rootEntityType, sanitizedEntityName)
     // readDataMaybeNull returns Some(null) if the path exists, but there is no data

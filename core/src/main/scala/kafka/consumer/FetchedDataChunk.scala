@@ -20,6 +20,7 @@ package kafka.consumer
 import kafka.message.ByteBufferMessageSet
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-case class FetchedDataChunk(messages: ByteBufferMessageSet,
-                            topicInfo: PartitionTopicInfo,
-                            fetchOffset: Long)
+case class FetchedDataChunk(
+  messages: ByteBufferMessageSet,
+  topicInfo: PartitionTopicInfo,
+  fetchOffset: Long)

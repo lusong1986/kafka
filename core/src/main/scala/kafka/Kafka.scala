@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -20,12 +20,12 @@ package kafka
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
-import sun.misc.{Signal, SignalHandler}
+import sun.misc.{ Signal, SignalHandler }
 import joptsimple.OptionParser
 import kafka.utils.Implicits._
-import kafka.server.{KafkaServer, KafkaServerStartable}
-import kafka.utils.{CommandLineUtils, Exit, Logging}
-import org.apache.kafka.common.utils.{OperatingSystem, Utils}
+import kafka.server.{ KafkaServer, KafkaServerStartable }
+import kafka.utils.{ CommandLineUtils, Exit, Logging }
+import org.apache.kafka.common.utils.{ OperatingSystem, Utils }
 
 import scala.collection.JavaConverters._
 
@@ -91,8 +91,7 @@ object Kafka extends Logging {
 
       kafkaServerStartable.startup()
       kafkaServerStartable.awaitShutdown()
-    }
-    catch {
+    } catch {
       case e: Throwable =>
         fatal("Exiting Kafka due to fatal exception", e)
         Exit.exit(1)

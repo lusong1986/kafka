@@ -17,7 +17,6 @@
 
 package kafka.common
 
-
 /**
  * This exception is thrown by the leader elector in the controller when leader election fails for a partition since
  * all the leader candidate replicas for a partition are offline; the set of candidates may or may not be limited

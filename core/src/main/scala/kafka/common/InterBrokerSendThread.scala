@@ -17,20 +17,20 @@
 package kafka.common
 
 import kafka.utils.ShutdownableThread
-import org.apache.kafka.clients.{ClientResponse, NetworkClient, RequestCompletionHandler}
+import org.apache.kafka.clients.{ ClientResponse, NetworkClient, RequestCompletionHandler }
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.internals.FatalExitError
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.utils.Time
 
-
 /**
  *  Class for inter-broker send thread that utilize a non-blocking network client.
  */
-abstract class InterBrokerSendThread(name: String,
-                                     networkClient: NetworkClient,
-                                     time: Time,
-                                     isInterruptible: Boolean = true)
+abstract class InterBrokerSendThread(
+  name: String,
+  networkClient: NetworkClient,
+  time: Time,
+  isInterruptible: Boolean = true)
   extends ShutdownableThread(name, isInterruptible) {
 
   def generateRequests(): Iterable[RequestAndCompletionHandler]
@@ -50,7 +50,8 @@ abstract class InterBrokerSendThread(name: String,
       for (request: RequestAndCompletionHandler <- generateRequests()) {
         val destination = Integer.toString(request.destination.id())
         val completionHandler = request.handler
-        val clientRequest = networkClient.newClientRequest(destination,
+        val clientRequest = networkClient.newClientRequest(
+          destination,
           request.request,
           now,
           true,
@@ -62,7 +63,7 @@ abstract class InterBrokerSendThread(name: String,
           val header = clientRequest.makeHeader(request.request.latestAllowedVersion)
           val disconnectResponse: ClientResponse = new ClientResponse(header, completionHandler, destination,
             now /* createdTimeMs */ , now /* receivedTimeMs */ , true /* disconnected */ , null /* versionMismatch */ ,
-            null /* responseBody */)
+            null /* responseBody */ )
 
           // poll timeout would be the minimum of connection delay if there are any dest yet to be reached;
           // otherwise it is infinity
@@ -89,4 +90,4 @@ abstract class InterBrokerSendThread(name: String,
 }
 
 case class RequestAndCompletionHandler(destination: Node, request: AbstractRequest.Builder[_ <: AbstractRequest],
-                                       handler: RequestCompletionHandler)
+  handler: RequestCompletionHandler)

@@ -19,8 +19,8 @@ package kafka.coordinator.transaction
 import java.nio.charset.StandardCharsets
 
 import kafka.common.KafkaException
-import kafka.utils.{Json, Logging}
-import kafka.zk.{KafkaZkClient, ProducerIdBlockZNode}
+import kafka.utils.{ Json, Logging }
+import kafka.zk.{ KafkaZkClient, ProducerIdBlockZNode }
 
 import scala.collection.JavaConverters._
 
@@ -36,11 +36,11 @@ object ProducerIdManager extends Logging {
   val PidBlockSize: Long = 1000L
 
   def generateProducerIdBlockJson(producerIdBlock: ProducerIdBlock): Array[Byte] = {
-    Json.encodeAsBytes(Map("version" -> CurrentVersion,
+    Json.encodeAsBytes(Map(
+      "version" -> CurrentVersion,
       "broker" -> producerIdBlock.brokerId,
       "block_start" -> producerIdBlock.blockStartId.toString,
-      "block_end" -> producerIdBlock.blockEndId.toString).asJava
-    )
+      "block_end" -> producerIdBlock.blockEndId.toString).asJava)
   }
 
   def parseProducerIdBlockData(jsonData: Array[Byte]): ProducerIdBlock = {
@@ -110,7 +110,8 @@ class ProducerIdManager(val brokerId: Int, val zkClient: KafkaZkClient) extends 
       val newProducerIdBlockData = ProducerIdManager.generateProducerIdBlockJson(currentProducerIdBlock)
 
       // try to write the new producerId block into zookeeper
-      val (succeeded, version) = zkClient.conditionalUpdatePath(ProducerIdBlockZNode.path,
+      val (succeeded, version) = zkClient.conditionalUpdatePath(
+        ProducerIdBlockZNode.path,
         newProducerIdBlockData, zkVersion, Some(checkProducerIdBlockZkData))
       zkWriteComplete = succeeded
 

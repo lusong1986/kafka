@@ -35,10 +35,11 @@ object TopicMetadataResponse {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class TopicMetadataResponse(brokers: Seq[BrokerEndPoint],
-                                 topicsMetadata: Seq[TopicMetadata],
-                                 correlationId: Int)
-    extends RequestOrResponse() {
+case class TopicMetadataResponse(
+  brokers: Seq[BrokerEndPoint],
+  topicsMetadata: Seq[TopicMetadata],
+  correlationId: Int)
+  extends RequestOrResponse() {
   val sizeInBytes: Int = {
     4 + 4 + brokers.map(_.sizeInBytes).sum + 4 + topicsMetadata.map(_.sizeInBytes).sum
   }
@@ -53,5 +54,5 @@ case class TopicMetadataResponse(brokers: Seq[BrokerEndPoint],
     topicsMetadata.foreach(_.writeTo(buffer))
   }
 
-  override def describe(details: Boolean):String = { toString }
+  override def describe(details: Boolean): String = { toString }
 }

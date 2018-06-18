@@ -20,8 +20,8 @@ package kafka.log
 import java.io.File
 import java.nio.ByteBuffer
 
-import kafka.utils.CoreUtils.inLock
 import kafka.common.InvalidOffsetException
+import kafka.utils.CoreUtils.inLock
 
 /**
  * An index that maps offsets to physical file locations for a particular log segment. This index may be sparse:
@@ -50,7 +50,7 @@ import kafka.common.InvalidOffsetException
  */
 // Avoid shadowing mutable `file` in AbstractIndex
 class OffsetIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writable: Boolean = true)
-    extends AbstractIndex[Long, Int](_file, baseOffset, maxIndexSize, writable) {
+  extends AbstractIndex[Long, Int](_file, baseOffset, maxIndexSize, writable) {
 
   override def entrySize = 8
 
@@ -87,7 +87,7 @@ class OffsetIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writabl
     maybeLock(lock) {
       val idx = mmap.duplicate
       val slot = largestLowerBoundSlotFor(idx, targetOffset, IndexSearchType.KEY)
-      if(slot == -1)
+      if (slot == -1)
         OffsetPosition(baseOffset, 0)
       else
         parseEntry(idx, slot).asInstanceOf[OffsetPosition]
@@ -115,7 +115,7 @@ class OffsetIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writabl
   private def physical(buffer: ByteBuffer, n: Int): Int = buffer.getInt(n * entrySize + 4)
 
   override def parseEntry(buffer: ByteBuffer, n: Int): IndexEntry = {
-      OffsetPosition(baseOffset + relativeOffset(buffer, n), physical(buffer, n))
+    OffsetPosition(baseOffset + relativeOffset(buffer, n), physical(buffer, n))
   }
 
   /**
@@ -125,7 +125,7 @@ class OffsetIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writabl
    */
   def entry(n: Int): OffsetPosition = {
     maybeLock(lock) {
-      if(n >= _entries)
+      if (n >= _entries)
         throw new IllegalArgumentException("Attempt to fetch the %dth entry from an index of size %d.".format(n, _entries))
       val idx = mmap.duplicate
       OffsetPosition(relativeOffset(idx, n), physical(idx, n))
@@ -165,9 +165,9 @@ class OffsetIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writabl
        * 3) if there is no entry for this offset, delete everything larger than the next smallest
        */
       val newEntries =
-        if(slot < 0)
+        if (slot < 0)
           0
-        else if(relativeOffset(idx, slot) == offset - baseOffset)
+        else if (relativeOffset(idx, slot) == offset - baseOffset)
           slot
         else
           slot + 1

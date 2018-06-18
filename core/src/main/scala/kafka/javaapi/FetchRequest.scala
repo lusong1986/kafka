@@ -20,7 +20,7 @@ package kafka.javaapi
 import java.util
 
 import kafka.common.TopicAndPartition
-import kafka.api.{PartitionFetchInfo, Request}
+import kafka.api.{ PartitionFetchInfo, Request }
 
 import scala.collection.JavaConverters._
 
@@ -32,11 +32,12 @@ object FetchRequest {
   }
 }
 
-class FetchRequest(correlationId: Int,
-                   clientId: String,
-                   maxWait: Int,
-                   minBytes: Int,
-                   requestInfo: util.LinkedHashMap[TopicAndPartition, PartitionFetchInfo]) {
+class FetchRequest(
+  correlationId: Int,
+  clientId: String,
+  maxWait: Int,
+  minBytes: Int,
+  requestInfo: util.LinkedHashMap[TopicAndPartition, PartitionFetchInfo]) {
 
   @deprecated("The order of partitions in `requestInfo` is relevant, so this constructor is deprecated in favour of the " +
     "one that takes a LinkedHashMap", since = "0.10.1.0")
@@ -52,8 +53,7 @@ class FetchRequest(correlationId: Int,
     replicaId = Request.OrdinaryConsumerId,
     maxWait = maxWait,
     minBytes = minBytes,
-    requestInfo = requestInfo.asScala.toBuffer
-  )
+    requestInfo = requestInfo.asScala.toBuffer)
 
   override def toString = underlying.toString
 

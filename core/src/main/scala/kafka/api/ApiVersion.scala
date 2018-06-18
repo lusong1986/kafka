@@ -76,8 +76,7 @@ object ApiVersion {
     // Introduced DeleteGroupsRequest V0 via KIP-229, plus KIP-227 incremental fetch requests,
     // and KafkaStorageException for fetch requests.
     "1.1-IV0" -> KAFKA_1_1_IV0,
-    "1.1" -> KAFKA_1_1_IV0
-  )
+    "1.1" -> KAFKA_1_1_IV0)
 
   private val versionPattern = "\\.".r
 

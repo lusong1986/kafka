@@ -20,7 +20,7 @@ package kafka.api
 import java.nio.ByteBuffer
 
 import kafka.common.TopicAndPartition
-import kafka.message.{ByteBufferMessageSet, MessageSet}
+import kafka.message.{ ByteBufferMessageSet, MessageSet }
 import kafka.api.ApiUtils._
 import org.apache.kafka.common.protocol.Errors
 
@@ -39,8 +39,8 @@ object FetchResponsePartitionData {
 
   val headerSize =
     2 + /* error code */
-    8 + /* high watermark */
-    4 /* messageSetSize */
+      8 + /* high watermark */
+      4 /* messageSetSize */
 }
 
 case class FetchResponsePartitionData(error: Errors = Errors.NONE, hw: Long = -1L, messages: MessageSet) {
@@ -56,19 +56,19 @@ object TopicData {
       val partitionData = FetchResponsePartitionData.readFrom(buffer)
       (partitionId, partitionData)
     })
-    TopicData(topic, Seq(topicPartitionDataPairs:_*))
+    TopicData(topic, Seq(topicPartitionDataPairs: _*))
   }
 
   def headerSize(topic: String) =
     shortStringLength(topic) +
-    4 /* partition count */
+      4 /* partition count */
 }
 
 case class TopicData(topic: String, partitionData: Seq[(Int, FetchResponsePartitionData)]) {
   val sizeInBytes =
     TopicData.headerSize(topic) + partitionData.foldLeft(0)((folded, data) => {
       folded + data._2.sizeInBytes + 4
-    }                                  /*_ + _.sizeInBytes + 4*/)
+    } /*_ + _.sizeInBytes + 4*/ )
 
   val headerSize = TopicData.headerSize(topic)
 }
@@ -83,11 +83,12 @@ object FetchResponse {
     val topicCount = buffer.getInt
     val pairs = (1 to topicCount).flatMap(_ => {
       val topicData = TopicData.readFrom(buffer)
-      topicData.partitionData.map { case (partitionId, partitionData) =>
-        (TopicAndPartition(topicData.topic, partitionId), partitionData)
+      topicData.partitionData.map {
+        case (partitionId, partitionData) =>
+          (TopicAndPartition(topicData.topic, partitionId), partitionData)
       }
     })
-    FetchResponse(correlationId, Vector(pairs:_*), requestVersion, throttleTime)
+    FetchResponse(correlationId, Vector(pairs: _*), requestVersion, throttleTime)
   }
 
   type FetchResponseEntry = (Int, FetchResponsePartitionData)
@@ -99,28 +100,31 @@ object FetchResponse {
   def headerSize(requestVersion: Int): Int = {
     val throttleTimeSize = if (requestVersion > 0) 4 else 0
     4 + /* correlationId */
-    4 + /* topic count */
-    throttleTimeSize
+      4 + /* topic count */
+      throttleTimeSize
   }
 
   // Returns the size of entire fetch response in bytes (including the header size)
-  def responseSize(dataGroupedByTopic: Seq[(String, Seq[FetchResponseEntry])],
-                   requestVersion: Int): Int = {
+  def responseSize(
+    dataGroupedByTopic: Seq[(String, Seq[FetchResponseEntry])],
+    requestVersion: Int): Int = {
     headerSize(requestVersion) +
-    dataGroupedByTopic.foldLeft(0) { case (folded, (topic, partitionDataMap)) =>
-      val topicData = TopicData(topic, partitionDataMap.map {
-        case (partitionId, partitionData) => (partitionId, partitionData)
-      })
-      folded + topicData.sizeInBytes
-    }
+      dataGroupedByTopic.foldLeft(0) {
+        case (folded, (topic, partitionDataMap)) =>
+          val topicData = TopicData(topic, partitionDataMap.map {
+            case (partitionId, partitionData) => (partitionId, partitionData)
+          })
+          folded + topicData.sizeInBytes
+      }
   }
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class FetchResponse(correlationId: Int,
-                         data: Seq[(TopicAndPartition, FetchResponsePartitionData)],
-                         requestVersion: Int = 0,
-                         throttleTimeMs: Int = 0)
+case class FetchResponse(
+  correlationId: Int,
+  data: Seq[(TopicAndPartition, FetchResponsePartitionData)],
+  requestVersion: Int = 0,
+  throttleTimeMs: Int = 0)
   extends RequestOrResponse() {
 
   /**

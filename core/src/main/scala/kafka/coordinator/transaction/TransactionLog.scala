@@ -16,7 +16,7 @@
  */
 package kafka.coordinator.transaction
 
-import kafka.common.{KafkaException, MessageFormatter}
+import kafka.common.{ KafkaException, MessageFormatter }
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.types.Type._
@@ -81,10 +81,12 @@ object TransactionLog {
 
     private val PartitionIdsKey = "partition_ids"
     private val TopicKey = "topic"
-    private val PartitionsSchema = new Schema(new Field(TopicKey, STRING),
+    private val PartitionsSchema = new Schema(
+      new Field(TopicKey, STRING),
       new Field(PartitionIdsKey, new ArrayOf(INT32)))
 
-    private val V0 = new Schema(new Field(ProducerIdKey, INT64, "Producer id in use by the transactional id."),
+    private val V0 = new Schema(
+      new Field(ProducerIdKey, INT64, "Producer id in use by the transactional id."),
       new Field(ProducerEpochKey, INT16, "Epoch associated with the producer id"),
       new Field(TxnTimeoutKey, INT32, "Transaction timeout in milliseconds"),
       new Field(TxnStatusKey, INT8,
@@ -126,10 +128,10 @@ object TransactionLog {
   }
 
   /**
-    * Generates the bytes for transaction log message key
-    *
-    * @return key bytes
-    */
+   * Generates the bytes for transaction log message key
+   *
+   * @return key bytes
+   */
   private[coordinator] def keyToBytes(transactionalId: String): Array[Byte] = {
     import KeySchema._
     val key = new Struct(CURRENT)
@@ -142,10 +144,10 @@ object TransactionLog {
   }
 
   /**
-    * Generates the payload bytes for transaction log message value
-    *
-    * @return value payload bytes
-    */
+   * Generates the payload bytes for transaction log message value
+   *
+   * @return value payload bytes
+   */
   private[coordinator] def valueToBytes(txnMetadata: TxnTransitMetadata): Array[Byte] = {
     import ValueSchema._
     val value = new Struct(Current)
@@ -165,12 +167,13 @@ object TransactionLog {
       // first group the topic partitions by their topic names
       val topicAndPartitions = txnMetadata.topicPartitions.groupBy(_.topic())
 
-      val partitionArray = topicAndPartitions.map { case(topic, partitions) =>
-        val topicPartitionsStruct = value.instance(TxnPartitionsField)
-        val partitionIds: Array[Integer] = partitions.map(topicPartition => Integer.valueOf(topicPartition.partition())).toArray
-        topicPartitionsStruct.set(PartitionsTopicField, topic)
-        topicPartitionsStruct.set(PartitionIdsField, partitionIds)
-        topicPartitionsStruct
+      val partitionArray = topicAndPartitions.map {
+        case (topic, partitions) =>
+          val topicPartitionsStruct = value.instance(TxnPartitionsField)
+          val partitionIds: Array[Integer] = partitions.map(topicPartition => Integer.valueOf(topicPartition.partition())).toArray
+          topicPartitionsStruct.set(PartitionsTopicField, topic)
+          topicPartitionsStruct.set(PartitionIdsField, partitionIds)
+          topicPartitionsStruct
       }
       value.set(TxnPartitionsField, partitionArray.toArray)
     }
@@ -182,10 +185,10 @@ object TransactionLog {
   }
 
   /**
-    * Decodes the transaction log messages' key
-    *
-    * @return the key
-    */
+   * Decodes the transaction log messages' key
+   *
+   * @return the key
+   */
   def readTxnRecordKey(buffer: ByteBuffer): TxnKey = {
     val version = buffer.getShort
     val keySchema = schemaForKey(version)
@@ -200,10 +203,10 @@ object TransactionLog {
   }
 
   /**
-    * Decodes the transaction log messages' payload and retrieves the transaction metadata from it
-    *
-    * @return a transaction metadata object from the message
-    */
+   * Decodes the transaction log messages' payload and retrieves the transaction metadata from it
+   *
+   * @return a transaction metadata object from the message
+   */
   def readTxnRecordValue(transactionalId: String, buffer: ByteBuffer): TransactionMetadata = {
     if (buffer == null) { // tombstone
       null
@@ -224,7 +227,7 @@ object TransactionLog {
         val startTimestamp = value.getLong(TxnStartTimestampField)
 
         val transactionMetadata = new TransactionMetadata(transactionalId, producerId, epoch, timeout, state,
-          mutable.Set.empty[TopicPartition],startTimestamp, entryTimestamp)
+          mutable.Set.empty[TopicPartition], startTimestamp, entryTimestamp)
 
         if (!state.equals(Empty)) {
           val topicPartitionArray = value.getArray(TxnPartitionsField)

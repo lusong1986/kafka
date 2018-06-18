@@ -18,7 +18,7 @@
 package kafka.consumer
 
 import scala.collection._
-import kafka.utils.{Json, ZKGroupDirs, ZkUtils, Logging, CoreUtils}
+import kafka.utils.{ Json, ZKGroupDirs, ZkUtils, Logging, CoreUtils }
 import kafka.common.KafkaException
 
 @deprecated("This trait has been deprecated and will be removed in a future release.", "0.11.0.0")
@@ -45,8 +45,9 @@ private[kafka] object TopicCount extends Logging {
 
   def makeThreadId(consumerIdString: String, threadId: Int) = consumerIdString + "-" + threadId
 
-  def makeConsumerThreadIdsPerTopic(consumerIdString: String,
-                                    topicCountMap: Map[String,  Int]) = {
+  def makeConsumerThreadIdsPerTopic(
+    consumerIdString: String,
+    topicCountMap: Map[String, Int]) = {
     val consumerThreadIdsPerTopicMap = new mutable.HashMap[String, Set[ConsumerThreadId]]()
     for ((topic, nConsumers) <- topicCountMap) {
       val consumerSet = new mutable.HashSet[ConsumerThreadId]
@@ -58,7 +59,7 @@ private[kafka] object TopicCount extends Logging {
     consumerThreadIdsPerTopicMap
   }
 
-  def constructTopicCount(group: String, consumerId: String, zkUtils: ZkUtils, excludeInternalTopics: Boolean) : TopicCount = {
+  def constructTopicCount(group: String, consumerId: String, zkUtils: ZkUtils, excludeInternalTopics: Boolean): TopicCount = {
     val dirs = new ZKGroupDirs(group)
     val topicCountString = zkUtils.readData(dirs.consumerRegistryDir + "/" + consumerId)._1
     var subscriptionPattern: String = null
@@ -109,9 +110,10 @@ private[kafka] object TopicCount extends Logging {
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-private[kafka] class StaticTopicCount(val consumerIdString: String,
-                                val topicCountMap: Map[String, Int])
-                                extends TopicCount {
+private[kafka] class StaticTopicCount(
+  val consumerIdString: String,
+  val topicCountMap: Map[String, Int])
+  extends TopicCount {
 
   def getConsumerThreadIdsPerTopic = TopicCount.makeConsumerThreadIdsPerTopic(consumerIdString, topicCountMap)
 
@@ -121,14 +123,15 @@ private[kafka] class StaticTopicCount(val consumerIdString: String,
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-private[kafka] class WildcardTopicCount(zkUtils: ZkUtils,
-                                        consumerIdString: String,
-                                        topicFilter: TopicFilter,
-                                        numStreams: Int,
-                                        excludeInternalTopics: Boolean) extends TopicCount {
+private[kafka] class WildcardTopicCount(
+  zkUtils: ZkUtils,
+  consumerIdString: String,
+  topicFilter: TopicFilter,
+  numStreams: Int,
+  excludeInternalTopics: Boolean) extends TopicCount {
   def getConsumerThreadIdsPerTopic = {
     val wildcardTopics = zkUtils.getChildrenParentMayNotExist(ZkUtils.BrokerTopicsPath)
-                         .filter(topic => topicFilter.isTopicAllowed(topic, excludeInternalTopics))
+      .filter(topic => topicFilter.isTopicAllowed(topic, excludeInternalTopics))
     TopicCount.makeConsumerThreadIdsPerTopic(consumerIdString, Map(wildcardTopics.map((_, numStreams)): _*))
   }
 

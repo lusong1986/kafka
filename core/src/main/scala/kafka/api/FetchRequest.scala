@@ -61,24 +61,27 @@ object FetchRequest {
         (TopicAndPartition(topic, partitionId), PartitionFetchInfo(offset, fetchSize))
       })
     })
-    FetchRequest(versionId, correlationId, clientId, replicaId, maxWait, minBytes, maxBytes, Vector(pairs:_*))
+    FetchRequest(versionId, correlationId, clientId, replicaId, maxWait, minBytes, maxBytes, Vector(pairs: _*))
   }
 
   def shuffle(requestInfo: Seq[(TopicAndPartition, PartitionFetchInfo)]): Seq[(TopicAndPartition, PartitionFetchInfo)] = {
-    val groupedByTopic = requestInfo.groupBy { case (tp, _) => tp.topic }.map { case (topic, values) =>
-      topic -> random.shuffle(values)
+    val groupedByTopic = requestInfo.groupBy { case (tp, _) => tp.topic }.map {
+      case (topic, values) =>
+        topic -> random.shuffle(values)
     }
-    random.shuffle(groupedByTopic.toSeq).flatMap { case (_, partitions) =>
-      partitions.map { case (tp, fetchInfo) => tp -> fetchInfo }
+    random.shuffle(groupedByTopic.toSeq).flatMap {
+      case (_, partitions) =>
+        partitions.map { case (tp, fetchInfo) => tp -> fetchInfo }
     }
   }
 
   def batchByTopic[T](s: Seq[(TopicAndPartition, T)]): Seq[(String, Seq[(Int, T)])] = {
     val result = new ArrayBuffer[(String, ArrayBuffer[(Int, T)])]
-    s.foreach { case (TopicAndPartition(t, p), value) =>
-      if (result.isEmpty || result.last._1 != t)
-        result += (t -> new ArrayBuffer)
-      result.last._2 += (p -> value)
+    s.foreach {
+      case (TopicAndPartition(t, p), value) =>
+        if (result.isEmpty || result.last._1 != t)
+          result += (t -> new ArrayBuffer)
+        result.last._2 += (p -> value)
     }
     result
   }
@@ -86,49 +89,54 @@ object FetchRequest {
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-case class FetchRequest(versionId: Short = FetchRequest.CurrentVersion,
-                        correlationId: Int = FetchRequest.DefaultCorrelationId,
-                        clientId: String = ConsumerConfig.DefaultClientId,
-                        replicaId: Int = Request.OrdinaryConsumerId,
-                        maxWait: Int = FetchRequest.DefaultMaxWait,
-                        minBytes: Int = FetchRequest.DefaultMinBytes,
-                        maxBytes: Int = FetchRequest.DefaultMaxBytes,
-                        requestInfo: Seq[(TopicAndPartition, PartitionFetchInfo)])
-        extends RequestOrResponse(Some(ApiKeys.FETCH.id)) {
+case class FetchRequest(
+  versionId: Short = FetchRequest.CurrentVersion,
+  correlationId: Int = FetchRequest.DefaultCorrelationId,
+  clientId: String = ConsumerConfig.DefaultClientId,
+  replicaId: Int = Request.OrdinaryConsumerId,
+  maxWait: Int = FetchRequest.DefaultMaxWait,
+  minBytes: Int = FetchRequest.DefaultMinBytes,
+  maxBytes: Int = FetchRequest.DefaultMaxBytes,
+  requestInfo: Seq[(TopicAndPartition, PartitionFetchInfo)])
+  extends RequestOrResponse(Some(ApiKeys.FETCH.id)) {
 
   /**
-    * Partitions the request info into a list of lists (one for each topic) while preserving request info ordering
-    */
+   * Partitions the request info into a list of lists (one for each topic) while preserving request info ordering
+   */
   private type PartitionInfos = Seq[(Int, PartitionFetchInfo)]
   private lazy val requestInfoGroupedByTopic: Seq[(String, PartitionInfos)] = FetchRequest.batchByTopic(requestInfo)
 
   /** Public constructor for the clients */
   @deprecated("The order of partitions in `requestInfo` is relevant, so this constructor is deprecated in favour of the " +
     "one that takes a Seq", since = "0.10.1.0")
-  def this(correlationId: Int,
-           clientId: String,
-           maxWait: Int,
-           minBytes: Int,
-           maxBytes: Int,
-           requestInfo: Map[TopicAndPartition, PartitionFetchInfo]) {
-    this(versionId = FetchRequest.CurrentVersion,
-         correlationId = correlationId,
-         clientId = clientId,
-         replicaId = Request.OrdinaryConsumerId,
-         maxWait = maxWait,
-         minBytes = minBytes,
-         maxBytes = maxBytes,
-         requestInfo = FetchRequest.shuffle(requestInfo.toSeq))
+  def this(
+    correlationId: Int,
+    clientId: String,
+    maxWait: Int,
+    minBytes: Int,
+    maxBytes: Int,
+    requestInfo: Map[TopicAndPartition, PartitionFetchInfo]) {
+    this(
+      versionId = FetchRequest.CurrentVersion,
+      correlationId = correlationId,
+      clientId = clientId,
+      replicaId = Request.OrdinaryConsumerId,
+      maxWait = maxWait,
+      minBytes = minBytes,
+      maxBytes = maxBytes,
+      requestInfo = FetchRequest.shuffle(requestInfo.toSeq))
   }
 
   /** Public constructor for the clients */
-  def this(correlationId: Int,
-           clientId: String,
-           maxWait: Int,
-           minBytes: Int,
-           maxBytes: Int,
-           requestInfo: Seq[(TopicAndPartition, PartitionFetchInfo)]) {
-    this(versionId = FetchRequest.CurrentVersion,
+  def this(
+    correlationId: Int,
+    clientId: String,
+    maxWait: Int,
+    minBytes: Int,
+    maxBytes: Int,
+    requestInfo: Seq[(TopicAndPartition, PartitionFetchInfo)]) {
+    this(
+      versionId = FetchRequest.CurrentVersion,
       correlationId = correlationId,
       clientId = clientId,
       replicaId = Request.OrdinaryConsumerId,
@@ -163,24 +171,24 @@ case class FetchRequest(versionId: Short = FetchRequest.CurrentVersion,
 
   def sizeInBytes: Int = {
     2 + /* versionId */
-    4 + /* correlationId */
-    shortStringLength(clientId) +
-    4 + /* replicaId */
-    4 + /* maxWait */
-    4 + /* minBytes */
-    (if (versionId >= 3) 4 /* maxBytes */ else 0) +
-    4 + /* topic count */
-    requestInfoGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
-      val (topic, partitionFetchInfos) = currTopic
-      foldedTopics +
-      shortStringLength(topic) +
-      4 + /* partition count */
-      partitionFetchInfos.size * (
-        4 + /* partition id */
-        8 + /* offset */
-        4 /* fetch size */
-      )
-    })
+      4 + /* correlationId */
+      shortStringLength(clientId) +
+      4 + /* replicaId */
+      4 + /* maxWait */
+      4 + /* minBytes */
+      (if (versionId >= 3) 4 /* maxBytes */ else 0) +
+      4 + /* topic count */
+      requestInfoGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
+        val (topic, partitionFetchInfos) = currTopic
+        foldedTopics +
+          shortStringLength(topic) +
+          4 + /* partition count */
+          partitionFetchInfos.size * (
+            4 + /* partition id */
+            8 + /* offset */
+            4 /* fetch size */
+          )
+      })
   }
 
   def isFromFollower = Request.isValidBrokerId(replicaId)
@@ -205,7 +213,7 @@ case class FetchRequest(versionId: Short = FetchRequest.CurrentVersion,
     fetchRequest.append("; MaxWait: " + maxWait + " ms")
     fetchRequest.append("; MinBytes: " + minBytes + " bytes")
     fetchRequest.append("; MaxBytes:" + maxBytes + " bytes")
-    if(details)
+    if (details)
       fetchRequest.append("; RequestInfo: " + requestInfo.mkString(","))
     fetchRequest.toString()
   }

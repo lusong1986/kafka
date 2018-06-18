@@ -17,34 +17,69 @@
 
 package kafka.log
 
-import java.io.{File, IOException}
-import java.nio.file.{Files, NoSuchFileException}
+import java.io.File
+import java.io.IOException
+import java.lang.{ Long => JLong }
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.text.NumberFormat
-import java.util.concurrent.atomic._
-import java.util.concurrent.{ConcurrentNavigableMap, ConcurrentSkipListMap, TimeUnit}
+import java.util.Map.{ Entry => JEntry }
+import java.util.concurrent.ConcurrentNavigableMap
+import java.util.concurrent.ConcurrentSkipListMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import java.util.regex.Pattern
+
+import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
+import scala.collection.Seq
+import scala.collection.Set
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ListBuffer
+
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.CorruptRecordException
+import org.apache.kafka.common.errors.KafkaStorageException
+import org.apache.kafka.common.errors.OffsetOutOfRangeException
+import org.apache.kafka.common.errors.RecordBatchTooLargeException
+import org.apache.kafka.common.errors.RecordTooLargeException
+import org.apache.kafka.common.errors.UnsupportedForMessageFormatException
+import org.apache.kafka.common.record.InvalidRecordException
+import org.apache.kafka.common.record.MemoryRecords
+import org.apache.kafka.common.record.RecordBatch
+import org.apache.kafka.common.record.Records
+import org.apache.kafka.common.record.RecordsProcessingStats
+import org.apache.kafka.common.record.TimestampType
+import org.apache.kafka.common.requests.FetchResponse.AbortedTransaction
+import org.apache.kafka.common.requests.IsolationLevel
+import org.apache.kafka.common.requests.ListOffsetRequest
+import org.apache.kafka.common.utils.Time
+import org.apache.kafka.common.utils.Utils
+
+import com.yammer.metrics.core.Gauge
 
 import kafka.api.KAFKA_0_10_0_IV0
-import kafka.common.{InvalidOffsetException, KafkaException, LongRef}
+import kafka.common.InvalidOffsetException
+import kafka.common.KafkaException
+import kafka.common.LongRef
+import kafka.message.BrokerCompressionCodec
+import kafka.message.CompressionCodec
+import kafka.message.NoCompressionCodec
 import kafka.metrics.KafkaMetricsGroup
-import kafka.server.{BrokerTopicStats, FetchDataInfo, LogDirFailureChannel, LogOffsetMetadata}
-import kafka.utils._
-import org.apache.kafka.common.errors.{CorruptRecordException, KafkaStorageException, OffsetOutOfRangeException, RecordBatchTooLargeException, RecordTooLargeException, UnsupportedForMessageFormatException}
-import org.apache.kafka.common.record._
-import org.apache.kafka.common.requests.{IsolationLevel, ListOffsetRequest}
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-import scala.collection.{Seq, Set, mutable}
-import com.yammer.metrics.core.Gauge
-import org.apache.kafka.common.utils.{Time, Utils}
-import kafka.message.{BrokerCompressionCodec, CompressionCodec, NoCompressionCodec}
-import kafka.server.checkpoints.{LeaderEpochCheckpointFile, LeaderEpochFile}
-import kafka.server.epoch.{LeaderEpochCache, LeaderEpochFileCache}
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.requests.FetchResponse.AbortedTransaction
-import java.util.Map.{Entry => JEntry}
-import java.lang.{Long => JLong}
-import java.util.regex.Pattern
+import kafka.server.BrokerTopicStats
+import kafka.server.FetchDataInfo
+import kafka.server.LogDirFailureChannel
+import kafka.server.LogOffsetMetadata
+import kafka.server.checkpoints.LeaderEpochCheckpointFile
+import kafka.server.checkpoints.LeaderEpochFile
+import kafka.server.epoch.LeaderEpochCache
+import kafka.server.epoch.LeaderEpochFileCache
+import kafka.utils.CoreUtils
+import kafka.utils.Logging
+import kafka.utils.Scheduler
+import kafka.utils.nonthreadsafe
+import kafka.utils.threadsafe
 
 object LogAppendInfo {
   val UnknownLogAppendInfo = LogAppendInfo(-1, -1, RecordBatch.NO_TIMESTAMP, -1L, RecordBatch.NO_TIMESTAMP, -1L,

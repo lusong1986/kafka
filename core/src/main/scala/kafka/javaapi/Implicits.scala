@@ -13,15 +13,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.javaapi
 
 import kafka.utils.Logging
 
 private[javaapi] object Implicits extends Logging {
 
-  implicit def scalaMessageSetToJavaMessageSet(messageSet: kafka.message.ByteBufferMessageSet):
-     kafka.javaapi.message.ByteBufferMessageSet = {
+  implicit def scalaMessageSetToJavaMessageSet(messageSet: kafka.message.ByteBufferMessageSet): kafka.javaapi.message.ByteBufferMessageSet = {
     new kafka.javaapi.message.ByteBufferMessageSet(messageSet.buffer)
   }
 

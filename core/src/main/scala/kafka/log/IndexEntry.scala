@@ -35,7 +35,6 @@ case class OffsetPosition(offset: Long, position: Int) extends IndexEntry {
   override def indexValue = position.toLong
 }
 
-
 /**
  * The mapping between a timestamp to a message offset. The entry means that any message whose timestamp is greater
  * than that timestamp must be at or after that offset.

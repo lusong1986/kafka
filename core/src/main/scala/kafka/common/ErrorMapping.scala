@@ -98,8 +98,7 @@ object ErrorMapping {
       classOf[NotEnoughReplicasAfterAppendException].asInstanceOf[Class[Throwable]] -> NotEnoughReplicasAfterAppendCode,
       classOf[TopicAuthorizationException].asInstanceOf[Class[Throwable]] -> TopicAuthorizationCode,
       classOf[GroupAuthorizationException].asInstanceOf[Class[Throwable]] -> GroupAuthorizationCode,
-      classOf[ClusterAuthorizationException].asInstanceOf[Class[Throwable]] -> ClusterAuthorizationCode
-    ).withDefaultValue(UnknownCode)
+      classOf[ClusterAuthorizationException].asInstanceOf[Class[Throwable]] -> ClusterAuthorizationCode).withDefaultValue(UnknownCode)
 
   /* invert the mapping */
   private val codeToException =
@@ -108,10 +107,10 @@ object ErrorMapping {
   def codeFor(exception: Class[Throwable]): Short = exceptionToCode(exception)
 
   def maybeThrowException(code: Short) =
-    if(code != 0)
+    if (code != 0)
       throw codeToException(code).newInstance()
 
-  def exceptionFor(code: Short) : Throwable = codeToException(code).newInstance()
+  def exceptionFor(code: Short): Throwable = codeToException(code).newInstance()
 
-  def exceptionNameFor(code: Short) : String = codeToException(code).getName()
+  def exceptionNameFor(code: Short): String = codeToException(code).getName()
 }

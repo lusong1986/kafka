@@ -17,7 +17,7 @@
 
 package kafka.consumer
 
-import kafka.common.{OffsetAndMetadata, TopicAndPartition}
+import kafka.common.{ OffsetAndMetadata, TopicAndPartition }
 import kafka.javaapi.consumer.ConsumerRebalanceListener
 
 import scala.collection._
@@ -38,7 +38,7 @@ trait ConsumerConnector {
    *          The number of items in the list is #streams. Each stream supports
    *          an iterator over message/metadata pairs.
    */
-  def createMessageStreams(topicCountMap: Map[String,Int]): Map[String, List[KafkaStream[Array[Byte],Array[Byte]]]]
+  def createMessageStreams(topicCountMap: Map[String, Int]): Map[String, List[KafkaStream[Array[Byte], Array[Byte]]]]
 
   /**
    *  Create a list of MessageStreams for each topic.
@@ -50,10 +50,10 @@ trait ConsumerConnector {
    *          The number of items in the list is #streams. Each stream supports
    *          an iterator over message/metadata pairs.
    */
-  def createMessageStreams[K,V](topicCountMap: Map[String,Int],
-                                keyDecoder: Decoder[K],
-                                valueDecoder: Decoder[V])
-    : Map[String,List[KafkaStream[K,V]]]
+  def createMessageStreams[K, V](
+    topicCountMap: Map[String, Int],
+    keyDecoder: Decoder[K],
+    valueDecoder: Decoder[V]): Map[String, List[KafkaStream[K, V]]]
 
   /**
    *  Create a list of message streams for all topics that match a given filter.
@@ -65,11 +65,11 @@ trait ConsumerConnector {
    *  @return a list of KafkaStream each of which provides an
    *          iterator over message/metadata pairs over allowed topics.
    */
-  def createMessageStreamsByFilter[K,V](topicFilter: TopicFilter,
-                                        numStreams: Int = 1,
-                                        keyDecoder: Decoder[K] = new DefaultDecoder(),
-                                        valueDecoder: Decoder[V] = new DefaultDecoder())
-    : Seq[KafkaStream[K,V]]
+  def createMessageStreamsByFilter[K, V](
+    topicFilter: TopicFilter,
+    numStreams: Int = 1,
+    keyDecoder: Decoder[K] = new DefaultDecoder(),
+    valueDecoder: Decoder[V] = new DefaultDecoder()): Seq[KafkaStream[K, V]]
 
   /**
    *  Commit the offsets of all broker partitions connected by this connector.
@@ -100,7 +100,7 @@ trait ConsumerConnector {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.Consumer instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.Consumer instead.", "0.11.0.0")
 object Consumer extends Logging {
   /**
    *  Create a ConsumerConnector

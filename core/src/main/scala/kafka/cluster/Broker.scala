@@ -37,7 +37,7 @@ case class Broker(id: Int, endPoints: Seq[EndPoint], rack: Option[String]) {
     throw new IllegalArgumentException(s"There is more than one end point with the same listener name: ${endPoints.mkString(",")}")
 
   override def toString: String =
-    s"$id : ${endPointsMap.values.mkString("(",",",")")} : ${rack.orNull}"
+    s"$id : ${endPointsMap.values.mkString("(", ",", ")")} : ${rack.orNull}"
 
   def this(id: Int, host: String, port: Int, listenerName: ListenerName, protocol: SecurityProtocol) = {
     this(id, Seq(EndPoint(host, port, listenerName, protocol)), None)
@@ -57,7 +57,8 @@ case class Broker(id: Int, endPoints: Seq[EndPoint], rack: Option[String]) {
     endPointsMap.get(listenerName).map(endpoint => new Node(id, endpoint.host, endpoint.port, rack.orNull))
 
   def brokerEndPoint(listenerName: ListenerName): BrokerEndPoint = {
-    val endpoint = endPointsMap.getOrElse(listenerName,
+    val endpoint = endPointsMap.getOrElse(
+      listenerName,
       throw new BrokerEndPointNotAvailableException(s"End point with listener name ${listenerName.value} not found for broker $id"))
     new BrokerEndPoint(id, endpoint.host, endpoint.port)
   }

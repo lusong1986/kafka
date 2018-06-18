@@ -17,7 +17,7 @@
 
 package kafka.coordinator.group
 
-import kafka.message.{CompressionCodec, NoCompressionCodec}
+import kafka.message.{ CompressionCodec, NoCompressionCodec }
 
 /**
  * Configuration settings for in-built offset management
@@ -36,24 +36,25 @@ import kafka.message.{CompressionCodec, NoCompressionCodec}
  * @param offsetCommitRequiredAcks The required acks before the commit can be accepted. In general, the default (-1)
  *                                 should not be overridden.
  */
-case class OffsetConfig(maxMetadataSize: Int = OffsetConfig.DefaultMaxMetadataSize,
-                        loadBufferSize: Int = OffsetConfig.DefaultLoadBufferSize,
-                        offsetsRetentionMs: Long = OffsetConfig.DefaultOffsetRetentionMs,
-                        offsetsRetentionCheckIntervalMs: Long = OffsetConfig.DefaultOffsetsRetentionCheckIntervalMs,
-                        offsetsTopicNumPartitions: Int = OffsetConfig.DefaultOffsetsTopicNumPartitions,
-                        offsetsTopicSegmentBytes: Int = OffsetConfig.DefaultOffsetsTopicSegmentBytes,
-                        offsetsTopicReplicationFactor: Short = OffsetConfig.DefaultOffsetsTopicReplicationFactor,
-                        offsetsTopicCompressionCodec: CompressionCodec = OffsetConfig.DefaultOffsetsTopicCompressionCodec,
-                        offsetCommitTimeoutMs: Int = OffsetConfig.DefaultOffsetCommitTimeoutMs,
-                        offsetCommitRequiredAcks: Short = OffsetConfig.DefaultOffsetCommitRequiredAcks)
+case class OffsetConfig(
+  maxMetadataSize: Int = OffsetConfig.DefaultMaxMetadataSize,
+  loadBufferSize: Int = OffsetConfig.DefaultLoadBufferSize,
+  offsetsRetentionMs: Long = OffsetConfig.DefaultOffsetRetentionMs,
+  offsetsRetentionCheckIntervalMs: Long = OffsetConfig.DefaultOffsetsRetentionCheckIntervalMs,
+  offsetsTopicNumPartitions: Int = OffsetConfig.DefaultOffsetsTopicNumPartitions,
+  offsetsTopicSegmentBytes: Int = OffsetConfig.DefaultOffsetsTopicSegmentBytes,
+  offsetsTopicReplicationFactor: Short = OffsetConfig.DefaultOffsetsTopicReplicationFactor,
+  offsetsTopicCompressionCodec: CompressionCodec = OffsetConfig.DefaultOffsetsTopicCompressionCodec,
+  offsetCommitTimeoutMs: Int = OffsetConfig.DefaultOffsetCommitTimeoutMs,
+  offsetCommitRequiredAcks: Short = OffsetConfig.DefaultOffsetCommitRequiredAcks)
 
 object OffsetConfig {
   val DefaultMaxMetadataSize = 4096
-  val DefaultLoadBufferSize = 5*1024*1024
-  val DefaultOffsetRetentionMs = 24*60*60*1000L
+  val DefaultLoadBufferSize = 5 * 1024 * 1024
+  val DefaultOffsetRetentionMs = 24 * 60 * 60 * 1000L
   val DefaultOffsetsRetentionCheckIntervalMs = 600000L
   val DefaultOffsetsTopicNumPartitions = 50
-  val DefaultOffsetsTopicSegmentBytes = 100*1024*1024
+  val DefaultOffsetsTopicSegmentBytes = 100 * 1024 * 1024
   val DefaultOffsetsTopicReplicationFactor = 3.toShort
   val DefaultOffsetsTopicCompressionCodec = NoCompressionCodec
   val DefaultOffsetCommitTimeoutMs = 5000

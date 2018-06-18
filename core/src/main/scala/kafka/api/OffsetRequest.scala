@@ -5,7 +5,7 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -49,19 +49,20 @@ object OffsetRequest {
         (TopicAndPartition(topic, partitionId), PartitionOffsetRequestInfo(time, maxNumOffsets))
       })
     })
-    OffsetRequest(Map(pairs:_*), versionId= versionId, clientId = clientId, correlationId = correlationId, replicaId = replicaId)
+    OffsetRequest(Map(pairs: _*), versionId = versionId, clientId = clientId, correlationId = correlationId, replicaId = replicaId)
   }
 }
 
 case class PartitionOffsetRequestInfo(time: Long, maxNumOffsets: Int)
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class OffsetRequest(requestInfo: Map[TopicAndPartition, PartitionOffsetRequestInfo],
-                         versionId: Short = OffsetRequest.CurrentVersion,
-                         correlationId: Int = 0,
-                         clientId: String = OffsetRequest.DefaultClientId,
-                         replicaId: Int = Request.OrdinaryConsumerId)
-    extends RequestOrResponse(Some(ApiKeys.LIST_OFFSETS.id)) {
+case class OffsetRequest(
+  requestInfo: Map[TopicAndPartition, PartitionOffsetRequestInfo],
+  versionId: Short = OffsetRequest.CurrentVersion,
+  correlationId: Int = 0,
+  clientId: String = OffsetRequest.DefaultClientId,
+  replicaId: Int = Request.OrdinaryConsumerId)
+  extends RequestOrResponse(Some(ApiKeys.LIST_OFFSETS.id)) {
 
   def this(requestInfo: Map[TopicAndPartition, PartitionOffsetRequestInfo], correlationId: Int, replicaId: Int) = this(requestInfo, OffsetRequest.CurrentVersion, correlationId, OffsetRequest.DefaultClientId, replicaId)
 
@@ -75,7 +76,7 @@ case class OffsetRequest(requestInfo: Map[TopicAndPartition, PartitionOffsetRequ
 
     buffer.putInt(requestInfoGroupedByTopic.size) // topic count
     requestInfoGroupedByTopic.foreach {
-      case((topic, partitionInfos)) =>
+      case ((topic, partitionInfos)) =>
         writeShortString(buffer, topic)
         buffer.putInt(partitionInfos.size) // partition count
         partitionInfos.foreach {
@@ -89,21 +90,21 @@ case class OffsetRequest(requestInfo: Map[TopicAndPartition, PartitionOffsetRequ
 
   def sizeInBytes =
     2 + /* versionId */
-    4 + /* correlationId */
-    shortStringLength(clientId) +
-    4 + /* replicaId */
-    4 + /* topic count */
-    requestInfoGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
-      val (topic, partitionInfos) = currTopic
-      foldedTopics +
-      shortStringLength(topic) +
-      4 + /* partition count */
-      partitionInfos.size * (
-        4 + /* partition */
-        8 + /* time */
-        4 /* maxNumOffsets */
-      )
-    })
+      4 + /* correlationId */
+      shortStringLength(clientId) +
+      4 + /* replicaId */
+      4 + /* topic count */
+      requestInfoGroupedByTopic.foldLeft(0)((foldedTopics, currTopic) => {
+        val (topic, partitionInfos) = currTopic
+        foldedTopics +
+          shortStringLength(topic) +
+          4 + /* partition count */
+          partitionInfos.size * (
+            4 + /* partition */
+            8 + /* time */
+            4 /* maxNumOffsets */
+          )
+      })
 
   def isFromOrdinaryClient = replicaId == Request.OrdinaryConsumerId
   def isFromDebuggingClient = replicaId == Request.DebuggingConsumerId
@@ -119,7 +120,7 @@ case class OffsetRequest(requestInfo: Map[TopicAndPartition, PartitionOffsetRequ
     offsetRequest.append("; CorrelationId: " + correlationId)
     offsetRequest.append("; ClientId: " + clientId)
     offsetRequest.append("; ReplicaId: " + replicaId)
-    if(details)
+    if (details)
       offsetRequest.append("; RequestInfo: " + requestInfo.mkString(","))
     offsetRequest.toString()
   }

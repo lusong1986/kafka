@@ -30,13 +30,12 @@ import scala.collection.JavaConverters._
 object AclCommand extends Logging {
 
   val Newline = scala.util.Properties.lineSeparator
-  val ResourceTypeToValidOperations = Map[ResourceType, Set[Operation]] (
+  val ResourceTypeToValidOperations = Map[ResourceType, Set[Operation]](
     Topic -> Set(Read, Write, Describe, Delete, DescribeConfigs, AlterConfigs, All),
     Group -> Set(Read, Describe, Delete, All),
     Cluster -> Set(Create, ClusterAction, DescribeConfigs, AlterConfigs, IdempotentWrite, Alter, Describe, All),
     TransactionalId -> Set(Describe, Write, All),
-    DelegationToken -> Set(Describe, All)
-  )
+    DelegationToken -> Set(Describe, All))
 
   def main(args: Array[String]) {
 
@@ -77,8 +76,7 @@ object AclCommand extends Logging {
     try {
       authZ.configure(authorizerProperties.asJava)
       f(authZ)
-    }
-    finally CoreUtils.swallow(authZ.close(), this)
+    } finally CoreUtils.swallow(authZ.close(), this)
   }
 
   private def addAcl(opts: AclCommandOptions) {
@@ -207,7 +205,7 @@ object AclCommand extends Logging {
   }
 
   def getAcls(principals: Set[KafkaPrincipal], permissionType: PermissionType, operations: Set[Operation],
-              hosts: Set[String]): Set[Acl] = {
+    hosts: Set[String]): Set[Acl] = {
     for {
       principal <- principals
       operation <- operations
@@ -216,7 +214,7 @@ object AclCommand extends Logging {
   }
 
   private def getHosts(opts: AclCommandOptions, hostOptionSpec: ArgumentAcceptingOptionSpec[String],
-                       principalOptionSpec: ArgumentAcceptingOptionSpec[String]): Set[String] = {
+    principalOptionSpec: ArgumentAcceptingOptionSpec[String]): Set[String] = {
     if (opts.options.has(hostOptionSpec))
       opts.options.valuesOf(hostOptionSpec).asScala.map(_.trim).toSet
     else if (opts.options.has(principalOptionSpec))
@@ -258,7 +256,7 @@ object AclCommand extends Logging {
 
   private def confirmAction(opts: AclCommandOptions, msg: String): Boolean = {
     if (opts.options.has(opts.forceOpt))
-        return true
+      return true
     println(msg)
     Console.readLine().equalsIgnoreCase("y")
   }

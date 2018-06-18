@@ -18,7 +18,7 @@
 package kafka.consumer
 
 import kafka.utils.Logging
-import java.util.regex.{Pattern, PatternSyntaxException}
+import java.util.regex.{ Pattern, PatternSyntaxException }
 
 import org.apache.kafka.common.internals.Topic
 
@@ -26,16 +26,15 @@ import org.apache.kafka.common.internals.Topic
 sealed abstract class TopicFilter(rawRegex: String) extends Logging {
 
   val regex = rawRegex
-          .trim
-          .replace(',', '|')
-          .replace(" ", "")
-          .replaceAll("""^["']+""","")
-          .replaceAll("""["']+$""","") // property files may bring quotes
+    .trim
+    .replace(',', '|')
+    .replace(" ", "")
+    .replaceAll("""^["']+""", "")
+    .replaceAll("""["']+$""", "") // property files may bring quotes
 
   try {
     Pattern.compile(regex)
-  }
-  catch {
+  } catch {
     case _: PatternSyntaxException =>
       throw new RuntimeException(regex + " is an invalid regex.")
   }

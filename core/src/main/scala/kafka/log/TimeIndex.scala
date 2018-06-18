@@ -20,10 +20,11 @@ package kafka.log
 import java.io.File
 import java.nio.ByteBuffer
 
-import kafka.common.InvalidOffsetException
-import kafka.utils.CoreUtils._
-import kafka.utils.Logging
 import org.apache.kafka.common.record.RecordBatch
+
+import kafka.common.InvalidOffsetException
+import kafka.utils.CoreUtils.inLock
+import kafka.utils.Logging
 
 /**
  * An index that maps from the timestamp to the logical offsets of the messages in a segment. This index might be
@@ -51,7 +52,7 @@ import org.apache.kafka.common.record.RecordBatch
  */
 // Avoid shadowing mutable file in AbstractIndex
 class TimeIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writable: Boolean = true)
-    extends AbstractIndex[Long, Long](_file, baseOffset, maxIndexSize, writable) with Logging {
+  extends AbstractIndex[Long, Long](_file, baseOffset, maxIndexSize, writable) with Logging {
 
   @volatile private var _lastEntry = lastEntryFromIndexFile
 
@@ -85,7 +86,7 @@ class TimeIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writable:
    */
   def entry(n: Int): TimestampOffset = {
     maybeLock(lock) {
-      if(n >= _entries)
+      if (n >= _entries)
         throw new IllegalArgumentException("Attempt to fetch the %dth entry from a time index of size %d.".format(n, _entries))
       val idx = mmap.duplicate
       TimestampOffset(timestamp(idx, n), relativeOffset(idx, n))
@@ -121,7 +122,7 @@ class TimeIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writable:
           .format(offset, _entries, lastEntry.offset, file.getAbsolutePath))
       if (_entries != 0 && timestamp < lastEntry.timestamp)
         throw new IllegalStateException("Attempt to append a timestamp (%d) to slot %d no larger than the last timestamp appended (%d) to %s."
-            .format(timestamp, _entries, lastEntry.timestamp, file.getAbsolutePath))
+          .format(timestamp, _entries, lastEntry.timestamp, file.getAbsolutePath))
       // We only append to the time index when the timestamp is greater than the last inserted timestamp.
       // If all the messages are in message format v0, the timestamp will always be NoTimestamp. In that case, the time
       // index will be empty.
@@ -174,9 +175,9 @@ class TimeIndex(_file: File, baseOffset: Long, maxIndexSize: Int = -1, writable:
        * 3) if there is no entry for this offset, delete everything larger than the next smallest
        */
       val newEntries =
-        if(slot < 0)
+        if (slot < 0)
           0
-        else if(relativeOffset(idx, slot) == offset - baseOffset)
+        else if (relativeOffset(idx, slot) == offset - baseOffset)
           slot
         else
           slot + 1

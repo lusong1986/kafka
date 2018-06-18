@@ -22,12 +22,12 @@ import java.util
 import kafka.utils.nonthreadsafe
 import org.apache.kafka.common.protocol.Errors
 
-
-case class MemberSummary(memberId: String,
-                         clientId: String,
-                         clientHost: String,
-                         metadata: Array[Byte],
-                         assignment: Array[Byte])
+case class MemberSummary(
+  memberId: String,
+  clientId: String,
+  clientHost: String,
+  metadata: Array[Byte],
+  assignment: Array[Byte])
 
 /**
  * Member metadata contains the following metadata:
@@ -50,14 +50,15 @@ case class MemberSummary(memberId: String,
  *                            and the group transitions to stable
  */
 @nonthreadsafe
-private[group] class MemberMetadata(val memberId: String,
-                                    val groupId: String,
-                                    val clientId: String,
-                                    val clientHost: String,
-                                    val rebalanceTimeoutMs: Int,
-                                    val sessionTimeoutMs: Int,
-                                    val protocolType: String,
-                                    var supportedProtocols: List[(String, Array[Byte])]) {
+private[group] class MemberMetadata(
+  val memberId: String,
+  val groupId: String,
+  val clientId: String,
+  val clientHost: String,
+  val rebalanceTimeoutMs: Int,
+  val sessionTimeoutMs: Int,
+  val protocolType: String,
+  var supportedProtocols: List[(String, Array[Byte])]) {
 
   var assignment: Array[Byte] = Array.empty[Byte]
   var awaitingJoinCallback: JoinGroupResult => Unit = null
@@ -107,7 +108,7 @@ private[group] class MemberMetadata(val memberId: String,
    * indicated by the order of supported protocols and returns the first one also contained in the set
    */
   def vote(candidates: Set[String]): String = {
-    supportedProtocols.find({ case (protocol, _) => candidates.contains(protocol)}) match {
+    supportedProtocols.find({ case (protocol, _) => candidates.contains(protocol) }) match {
       case Some((protocol, _)) => protocol
       case None =>
         throw new IllegalArgumentException("Member does not support any of the candidate protocols")

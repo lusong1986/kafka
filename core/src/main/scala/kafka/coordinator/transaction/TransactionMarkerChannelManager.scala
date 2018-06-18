@@ -16,43 +16,42 @@
  */
 package kafka.coordinator.transaction
 
-
-import kafka.common.{InterBrokerSendThread, RequestAndCompletionHandler}
+import kafka.common.{ InterBrokerSendThread, RequestAndCompletionHandler }
 import kafka.metrics.KafkaMetricsGroup
-import kafka.server.{DelayedOperationPurgatory, KafkaConfig, MetadataCache}
-import kafka.utils.{CoreUtils, Logging}
+import kafka.server.{ DelayedOperationPurgatory, KafkaConfig, MetadataCache }
+import kafka.utils.{ CoreUtils, Logging }
 import org.apache.kafka.clients._
-import org.apache.kafka.common.{Node, TopicPartition}
+import org.apache.kafka.common.{ Node, TopicPartition }
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.network._
-import org.apache.kafka.common.requests.{TransactionResult, WriteTxnMarkersRequest}
+import org.apache.kafka.common.requests.{ TransactionResult, WriteTxnMarkersRequest }
 import org.apache.kafka.common.security.JaasContext
-import org.apache.kafka.common.utils.{LogContext, Time}
+import org.apache.kafka.common.utils.{ LogContext, Time }
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.WriteTxnMarkersRequest.TxnMarkerEntry
 import com.yammer.metrics.core.Gauge
 import java.util
-import java.util.concurrent.{BlockingQueue, ConcurrentHashMap, LinkedBlockingQueue}
+import java.util.concurrent.{ BlockingQueue, ConcurrentHashMap, LinkedBlockingQueue }
 
 import collection.JavaConverters._
-import scala.collection.{concurrent, immutable}
+import scala.collection.{ concurrent, immutable }
 
 object TransactionMarkerChannelManager {
-  def apply(config: KafkaConfig,
-            metrics: Metrics,
-            metadataCache: MetadataCache,
-            txnStateManager: TransactionStateManager,
-            txnMarkerPurgatory: DelayedOperationPurgatory[DelayedTxnMarker],
-            time: Time,
-            logContext: LogContext): TransactionMarkerChannelManager = {
+  def apply(
+    config: KafkaConfig,
+    metrics: Metrics,
+    metadataCache: MetadataCache,
+    txnStateManager: TransactionStateManager,
+    txnMarkerPurgatory: DelayedOperationPurgatory[DelayedTxnMarker],
+    time: Time,
+    logContext: LogContext): TransactionMarkerChannelManager = {
     val channelBuilder = ChannelBuilders.clientChannelBuilder(
       config.interBrokerSecurityProtocol,
       JaasContext.Type.SERVER,
       config,
       config.interBrokerListenerName,
       config.saslMechanismInterBrokerProtocol,
-      config.saslInterBrokerHandshakeRequestEnable
-    )
+      config.saslInterBrokerHandshakeRequestEnable)
     val selector = new Selector(
       NetworkReceive.UNLIMITED,
       config.connectionsMaxIdleMs,
@@ -62,8 +61,7 @@ object TransactionMarkerChannelManager {
       Map.empty[String, String].asJava,
       false,
       channelBuilder,
-      logContext
-    )
+      logContext)
     val networkClient = new NetworkClient(
       selector,
       new ManualMetadataUpdater(),
@@ -77,16 +75,15 @@ object TransactionMarkerChannelManager {
       time,
       false,
       new ApiVersions,
-      logContext
-    )
+      logContext)
 
-    new TransactionMarkerChannelManager(config,
+    new TransactionMarkerChannelManager(
+      config,
       metadataCache,
       networkClient,
       txnStateManager,
       txnMarkerPurgatory,
-      time
-    )
+      time)
   }
 
 }
@@ -103,13 +100,14 @@ class TxnMarkerQueue(@volatile var destination: Node) {
 
   def addMarkers(txnTopicPartition: Int, txnIdAndMarker: TxnIdAndMarkerEntry): Unit = {
     val queue = CoreUtils.atomicGetOrUpdate(markersPerTxnTopicPartition, txnTopicPartition,
-        new LinkedBlockingQueue[TxnIdAndMarkerEntry]())
+      new LinkedBlockingQueue[TxnIdAndMarkerEntry]())
     queue.add(txnIdAndMarker)
   }
 
-  def forEachTxnTopicPartition[B](f:(Int, BlockingQueue[TxnIdAndMarkerEntry]) => B): Unit =
-    markersPerTxnTopicPartition.foreach { case (partition, queue) =>
-      if (!queue.isEmpty) f(partition, queue)
+  def forEachTxnTopicPartition[B](f: (Int, BlockingQueue[TxnIdAndMarkerEntry]) => B): Unit =
+    markersPerTxnTopicPartition.foreach {
+      case (partition, queue) =>
+        if (!queue.isEmpty) f(partition, queue)
     }
 
   def totalNumMarkers: Int = markersPerTxnTopicPartition.values.foldLeft(0) { _ + _.size }
@@ -118,12 +116,13 @@ class TxnMarkerQueue(@volatile var destination: Node) {
   def totalNumMarkers(txnTopicPartition: Int): Int = markersPerTxnTopicPartition.get(txnTopicPartition).fold(0)(_.size)
 }
 
-class TransactionMarkerChannelManager(config: KafkaConfig,
-                                      metadataCache: MetadataCache,
-                                      networkClient: NetworkClient,
-                                      txnStateManager: TransactionStateManager,
-                                      txnMarkerPurgatory: DelayedOperationPurgatory[DelayedTxnMarker],
-                                      time: Time) extends InterBrokerSendThread("TxnMarkerSenderThread-" + config.brokerId, networkClient, time) with Logging with KafkaMetricsGroup {
+class TransactionMarkerChannelManager(
+  config: KafkaConfig,
+  metadataCache: MetadataCache,
+  networkClient: NetworkClient,
+  txnStateManager: TransactionStateManager,
+  txnMarkerPurgatory: DelayedOperationPurgatory[DelayedTxnMarker],
+  time: Time) extends InterBrokerSendThread("TxnMarkerSenderThread-" + config.brokerId, networkClient, time) with Logging with KafkaMetricsGroup {
 
   this.logIdent = "[Transaction Marker Channel Manager " + config.brokerId + "]: "
 
@@ -139,15 +138,13 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
     "UnknownDestinationQueueSize",
     new Gauge[Int] {
       def value: Int = markersQueueForUnknownBroker.totalNumMarkers
-    }
-  )
+    })
 
   newGauge(
     "LogAppendRetryQueueSize",
     new Gauge[Int] {
       def value: Int = txnLogAppendRetryQueue.size
-    }
-  )
+    })
 
   override def generateRequests() = drainQueuedTransactionMarkers()
 
@@ -171,7 +168,7 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
     // we do not synchronize on the update of the broker node with the enqueuing,
     // since even if there is a race condition we will just retry
     val brokerRequestQueue = CoreUtils.atomicGetOrUpdate(markersQueuePerBroker, brokerId,
-        new TxnMarkerQueue(broker))
+      new TxnMarkerQueue(broker))
     brokerRequestQueue.destination = broker
     brokerRequestQueue.addMarkers(txnTopicPartition, txnIdAndMarker)
 
@@ -190,8 +187,9 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
   private[transaction] def drainQueuedTransactionMarkers(): Iterable[RequestAndCompletionHandler] = {
     retryLogAppends()
     val txnIdAndMarkerEntries: java.util.List[TxnIdAndMarkerEntry] = new util.ArrayList[TxnIdAndMarkerEntry]()
-    markersQueueForUnknownBroker.forEachTxnTopicPartition { case (_, queue) =>
-      queue.drainTo(txnIdAndMarkerEntries)
+    markersQueueForUnknownBroker.forEachTxnTopicPartition {
+      case (_, queue) =>
+        queue.drainTo(txnIdAndMarkerEntries)
     }
 
     for (txnIdAndMarker: TxnIdAndMarkerEntry <- txnIdAndMarkerEntries.asScala) {
@@ -207,22 +205,25 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
 
     markersQueuePerBroker.values.map { brokerRequestQueue =>
       val txnIdAndMarkerEntries = new util.ArrayList[TxnIdAndMarkerEntry]()
-      brokerRequestQueue.forEachTxnTopicPartition { case (_, queue) =>
-        queue.drainTo(txnIdAndMarkerEntries)
+      brokerRequestQueue.forEachTxnTopicPartition {
+        case (_, queue) =>
+          queue.drainTo(txnIdAndMarkerEntries)
       }
       (brokerRequestQueue.destination, txnIdAndMarkerEntries)
-    }.filter { case (_, entries) => !entries.isEmpty }.map { case (node, entries) =>
-      val markersToSend = entries.asScala.map(_.txnMarkerEntry).asJava
-      val requestCompletionHandler = new TransactionMarkerRequestCompletionHandler(node.id, txnStateManager, this, entries)
-      RequestAndCompletionHandler(node, new WriteTxnMarkersRequest.Builder(markersToSend), requestCompletionHandler)
+    }.filter { case (_, entries) => !entries.isEmpty }.map {
+      case (node, entries) =>
+        val markersToSend = entries.asScala.map(_.txnMarkerEntry).asJava
+        val requestCompletionHandler = new TransactionMarkerRequestCompletionHandler(node.id, txnStateManager, this, entries)
+        RequestAndCompletionHandler(node, new WriteTxnMarkersRequest.Builder(markersToSend), requestCompletionHandler)
     }
   }
 
-  def addTxnMarkersToSend(transactionalId: String,
-                          coordinatorEpoch: Int,
-                          txnResult: TransactionResult,
-                          txnMetadata: TransactionMetadata,
-                          newMetadata: TxnTransitMetadata): Unit = {
+  def addTxnMarkersToSend(
+    transactionalId: String,
+    coordinatorEpoch: Int,
+    txnResult: TransactionResult,
+    txnMetadata: TransactionMetadata,
+    newMetadata: TxnTransitMetadata): Unit = {
 
     def appendToLogCallback(error: Errors): Unit = {
       error match {
@@ -302,8 +303,8 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
   }
 
   def addTxnMarkersToBrokerQueue(transactionalId: String, producerId: Long, producerEpoch: Short,
-                                 result: TransactionResult, coordinatorEpoch: Int,
-                                 topicPartitions: immutable.Set[TopicPartition]): Unit = {
+    result: TransactionResult, coordinatorEpoch: Int,
+    topicPartitions: immutable.Set[TopicPartition]): Unit = {
     val txnTopicPartition = txnStateManager.partitionFor(transactionalId)
     val partitionsByDestination: immutable.Map[Option[Node], immutable.Set[TopicPartition]] = topicPartitions.groupBy { topicPartition: TopicPartition =>
       metadataCache.getPartitionLeaderEndpoint(topicPartition.topic, topicPartition.partition, interBrokerListenerName)
@@ -367,11 +368,12 @@ class TransactionMarkerChannelManager(config: KafkaConfig,
         removeMarkersForTxnId(entry.txnId)
     }
 
-    markersQueuePerBroker.foreach { case(_, brokerQueue) =>
-      brokerQueue.removeMarkersForTxnTopicPartition(txnTopicPartitionId).foreach { queue =>
-        for (entry: TxnIdAndMarkerEntry <- queue.asScala)
-          removeMarkersForTxnId(entry.txnId)
-      }
+    markersQueuePerBroker.foreach {
+      case (_, brokerQueue) =>
+        brokerQueue.removeMarkersForTxnTopicPartition(txnTopicPartitionId).foreach { queue =>
+          for (entry: TxnIdAndMarkerEntry <- queue.asScala)
+            removeMarkersForTxnId(entry.txnId)
+        }
     }
   }
 

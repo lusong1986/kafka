@@ -13,13 +13,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.javaapi.message
 
-
-import kafka.message.{MessageAndOffset, InvalidMessageException}
-
+import kafka.message.{ MessageAndOffset, InvalidMessageException }
 
 /**
  * A set of messages. A message set has a fixed serialized form, though the container
@@ -46,9 +44,9 @@ abstract class MessageSet extends java.lang.Iterable[MessageAndOffset] {
    */
   def validate(): Unit = {
     val thisIterator = this.iterator
-    while(thisIterator.hasNext) {
+    while (thisIterator.hasNext) {
       val messageAndOffset = thisIterator.next
-      if(!messageAndOffset.message.isValid)
+      if (!messageAndOffset.message.isValid)
         throw new InvalidMessageException
     }
   }

@@ -18,13 +18,13 @@
 package kafka.javaapi
 
 import kafka.common.TopicAndPartition
-import kafka.api.{Request, PartitionOffsetRequestInfo}
+import kafka.api.{ Request, PartitionOffsetRequestInfo }
 import scala.collection.JavaConverters._
 
-
-class OffsetRequest(requestInfo: java.util.Map[TopicAndPartition, PartitionOffsetRequestInfo],
-                    versionId: Short,
-                    clientId: String) {
+class OffsetRequest(
+  requestInfo: java.util.Map[TopicAndPartition, PartitionOffsetRequestInfo],
+  versionId: Short,
+  clientId: String) {
 
   val underlying = {
     val scalaMap = requestInfo.asScala.toMap
@@ -32,8 +32,7 @@ class OffsetRequest(requestInfo: java.util.Map[TopicAndPartition, PartitionOffse
       requestInfo = scalaMap,
       versionId = versionId,
       clientId = clientId,
-      replicaId = Request.OrdinaryConsumerId
-    )
+      replicaId = Request.OrdinaryConsumerId)
   }
 
   override def toString = underlying.toString

@@ -19,9 +19,9 @@ package kafka.common
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-import kafka.utils.{Logging, ShutdownableThread}
-import kafka.zk.{KafkaZkClient, StateChangeHandlers}
-import kafka.zookeeper.{StateChangeHandler, ZNodeChildChangeHandler}
+import kafka.utils.{ Logging, ShutdownableThread }
+import kafka.zk.{ KafkaZkClient, StateChangeHandlers }
+import kafka.zookeeper.{ StateChangeHandler, ZNodeChildChangeHandler }
 import org.apache.kafka.common.utils.Time
 
 /**
@@ -45,12 +45,13 @@ trait NotificationHandler {
  * @param changeExpirationMs
  * @param time
  */
-class ZkNodeChangeNotificationListener(private val zkClient: KafkaZkClient,
-                                       private val seqNodeRoot: String,
-                                       private val seqNodePrefix: String,
-                                       private val notificationHandler: NotificationHandler,
-                                       private val changeExpirationMs: Long = 15 * 60 * 1000,
-                                       private val time: Time = Time.SYSTEM) extends Logging {
+class ZkNodeChangeNotificationListener(
+  private val zkClient: KafkaZkClient,
+  private val seqNodeRoot: String,
+  private val seqNodePrefix: String,
+  private val notificationHandler: NotificationHandler,
+  private val changeExpirationMs: Long = 15 * 60 * 1000,
+  private val time: Time = Time.SYSTEM) extends Logging {
   private var lastExecutedChange = -1L
   private val queue = new LinkedBlockingQueue[ChangeNotification]
   private val thread = new ChangeEventProcessThread(s"$seqNodeRoot-event-process-thread")
@@ -140,7 +141,7 @@ class ZkNodeChangeNotificationListener(private val zkClient: KafkaZkClient,
     override def handleChildChange(): Unit = addChangeNotification
   }
 
-  object ZkStateChangeHandler extends  StateChangeHandler {
+  object ZkStateChangeHandler extends StateChangeHandler {
     override val name: String = StateChangeHandlers.zkNodeChangeListenerHandler(seqNodeRoot)
     override def afterInitializingSession(): Unit = addChangeNotification
   }

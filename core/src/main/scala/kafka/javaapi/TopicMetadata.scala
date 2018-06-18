@@ -20,11 +20,9 @@ import kafka.cluster.BrokerEndPoint
 import scala.collection.JavaConverters._
 
 private[javaapi] object MetadataListImplicits {
-  implicit def toJavaTopicMetadataList(topicMetadataSeq: Seq[kafka.api.TopicMetadata]):
-  java.util.List[kafka.javaapi.TopicMetadata] = topicMetadataSeq.map(new kafka.javaapi.TopicMetadata(_)).asJava
+  implicit def toJavaTopicMetadataList(topicMetadataSeq: Seq[kafka.api.TopicMetadata]): java.util.List[kafka.javaapi.TopicMetadata] = topicMetadataSeq.map(new kafka.javaapi.TopicMetadata(_)).asJava
 
-  implicit def toPartitionMetadataList(partitionMetadataSeq: Seq[kafka.api.PartitionMetadata]):
-  java.util.List[kafka.javaapi.PartitionMetadata] = partitionMetadataSeq.map(new kafka.javaapi.PartitionMetadata(_)).asJava
+  implicit def toPartitionMetadataList(partitionMetadataSeq: Seq[kafka.api.PartitionMetadata]): java.util.List[kafka.javaapi.PartitionMetadata] = partitionMetadataSeq.map(new kafka.javaapi.PartitionMetadata(_)).asJava
 }
 
 class TopicMetadata(private val underlying: kafka.api.TopicMetadata) {
@@ -43,7 +41,6 @@ class TopicMetadata(private val underlying: kafka.api.TopicMetadata) {
 
   override def toString = underlying.toString
 }
-
 
 class PartitionMetadata(private val underlying: kafka.api.PartitionMetadata) {
   def partitionId: Int = underlying.partitionId

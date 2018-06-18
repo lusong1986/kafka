@@ -39,14 +39,15 @@ object OffsetCommitResponse extends Logging {
         (TopicAndPartition(topic, partitionId), error)
       })
     })
-    OffsetCommitResponse(Map(pairs:_*), correlationId)
+    OffsetCommitResponse(Map(pairs: _*), correlationId)
   }
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class OffsetCommitResponse(commitStatus: Map[TopicAndPartition, Errors],
-                                correlationId: Int = 0)
-    extends RequestOrResponse() {
+case class OffsetCommitResponse(
+  commitStatus: Map[TopicAndPartition, Errors],
+  correlationId: Int = 0)
+  extends RequestOrResponse() {
 
   lazy val commitStatusGroupedByTopic = commitStatus.groupBy(_._1.topic)
 
@@ -55,28 +56,30 @@ case class OffsetCommitResponse(commitStatus: Map[TopicAndPartition, Errors],
   def writeTo(buffer: ByteBuffer) {
     buffer.putInt(correlationId)
     buffer.putInt(commitStatusGroupedByTopic.size)
-    commitStatusGroupedByTopic.foreach { case(topic, statusMap) =>
-      ApiUtils.writeShortString(buffer, topic)
-      buffer.putInt(statusMap.size) // partition count
-      statusMap.foreach { case(topicAndPartition, error) =>
-        buffer.putInt(topicAndPartition.partition)
-        buffer.putShort(error.code)
-      }
+    commitStatusGroupedByTopic.foreach {
+      case (topic, statusMap) =>
+        ApiUtils.writeShortString(buffer, topic)
+        buffer.putInt(statusMap.size) // partition count
+        statusMap.foreach {
+          case (topicAndPartition, error) =>
+            buffer.putInt(topicAndPartition.partition)
+            buffer.putShort(error.code)
+        }
     }
   }
 
   override def sizeInBytes =
     4 + /* correlationId */
-    4 + /* topic count */
-    commitStatusGroupedByTopic.foldLeft(0)((count, partitionStatusMap) => {
-      val (topic, partitionStatus) = partitionStatusMap
-      count +
-      ApiUtils.shortStringLength(topic) +
-      4 + /* partition count */
-      partitionStatus.size * ( 4 /* partition */  + 2 /* error code */)
-    })
+      4 + /* topic count */
+      commitStatusGroupedByTopic.foldLeft(0)((count, partitionStatusMap) => {
+        val (topic, partitionStatus) = partitionStatusMap
+        count +
+          ApiUtils.shortStringLength(topic) +
+          4 + /* partition count */
+          partitionStatus.size * (4 /* partition */ + 2 /* error code */ )
+      })
 
-  override def describe(details: Boolean):String = { toString }
+  override def describe(details: Boolean): String = { toString }
 
 }
 

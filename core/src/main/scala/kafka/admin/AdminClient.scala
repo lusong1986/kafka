@@ -14,45 +14,46 @@ package kafka.admin
 
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.{Collections, Properties}
+import java.util.{ Collections, Properties }
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ConcurrentLinkedQueue, Future, TimeUnit}
+import java.util.concurrent.{ ConcurrentLinkedQueue, Future, TimeUnit }
 
 import kafka.admin.AdminClient.DeleteRecordsResult
 import kafka.common.KafkaException
 import kafka.coordinator.group.GroupOverview
 import kafka.utils.Logging
 import org.apache.kafka.clients._
-import org.apache.kafka.clients.consumer.internals.{ConsumerNetworkClient, ConsumerProtocol, RequestFuture, RequestFutureAdapter}
-import org.apache.kafka.common.config.ConfigDef.{Importance, Type}
-import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
-import org.apache.kafka.common.errors.{AuthenticationException, TimeoutException}
+import org.apache.kafka.clients.consumer.internals.{ ConsumerNetworkClient, ConsumerProtocol, RequestFuture, RequestFutureAdapter }
+import org.apache.kafka.common.config.ConfigDef.{ Importance, Type }
+import org.apache.kafka.common.config.{ AbstractConfig, ConfigDef }
+import org.apache.kafka.common.errors.{ AuthenticationException, TimeoutException }
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.network.Selector
-import org.apache.kafka.common.protocol.{ApiKeys, Errors}
+import org.apache.kafka.common.protocol.{ ApiKeys, Errors }
 import org.apache.kafka.common.requests._
 import org.apache.kafka.common.requests.ApiVersionsResponse.ApiVersion
 import org.apache.kafka.common.requests.DescribeGroupsResponse.GroupMetadata
 import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.security.auth.KafkaPrincipal
-import org.apache.kafka.common.security.token.delegation.{DelegationToken, TokenInformation}
-import org.apache.kafka.common.utils.{KafkaThread, Time, Utils}
-import org.apache.kafka.common.{Cluster, Node, TopicPartition}
+import org.apache.kafka.common.security.token.delegation.{ DelegationToken, TokenInformation }
+import org.apache.kafka.common.utils.{ KafkaThread, Time, Utils }
+import org.apache.kafka.common.{ Cluster, Node, TopicPartition }
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 /**
-  * A Scala administrative client for Kafka which supports managing and inspecting topics, brokers,
-  * and configurations.  This client is deprecated, and will be replaced by KafkaAdminClient.
-  * @see KafkaAdminClient
-  */
-class AdminClient(val time: Time,
-                  val requestTimeoutMs: Int,
-                  val retryBackoffMs: Long,
-                  val client: ConsumerNetworkClient,
-                  val bootstrapBrokers: List[Node]) extends Logging {
+ * A Scala administrative client for Kafka which supports managing and inspecting topics, brokers,
+ * and configurations.  This client is deprecated, and will be replaced by KafkaAdminClient.
+ * @see KafkaAdminClient
+ */
+class AdminClient(
+  val time: Time,
+  val requestTimeoutMs: Int,
+  val retryBackoffMs: Long,
+  val client: ConsumerNetworkClient,
+  val bootstrapBrokers: List[Node]) extends Logging {
 
   @volatile var running: Boolean = true
   val pendingFutures = new ConcurrentLinkedQueue[RequestFuture[ClientResponse]]()
@@ -63,7 +64,7 @@ class AdminClient(val time: Time,
         while (running)
           client.poll(Long.MaxValue)
       } catch {
-        case t : Throwable =>
+        case t: Throwable =>
           error("admin-client-network-thread exited", t)
       } finally {
         pendingFutures.asScala.foreach { future =>
@@ -80,9 +81,10 @@ class AdminClient(val time: Time,
 
   networkThread.start()
 
-  private def send(target: Node,
-                   api: ApiKeys,
-                   request: AbstractRequest.Builder[_ <: AbstractRequest]): AbstractResponse = {
+  private def send(
+    target: Node,
+    api: ApiKeys,
+    request: AbstractRequest.Builder[_ <: AbstractRequest]): AbstractResponse = {
     val future: RequestFuture[ClientResponse] = client.send(target, request)
     pendingFutures.add(future)
     future.awaitDone(Long.MaxValue, TimeUnit.MILLISECONDS)
@@ -241,27 +243,30 @@ class AdminClient(val time: Time,
     if (!errors.isEmpty)
       error(s"Metadata request contained errors: $errors")
 
-    val (partitionsWithoutError, partitionsWithError) = offsets.partition{ partitionAndOffset =>
-      !response.errors().containsKey(partitionAndOffset._1.topic())}
+    val (partitionsWithoutError, partitionsWithError) = offsets.partition { partitionAndOffset =>
+      !response.errors().containsKey(partitionAndOffset._1.topic())
+    }
 
-    val (partitionsWithLeader, partitionsWithoutLeader) = partitionsWithoutError.partition{ partitionAndOffset =>
-      response.cluster().leaderFor(partitionAndOffset._1) != null}
+    val (partitionsWithLeader, partitionsWithoutLeader) = partitionsWithoutError.partition { partitionAndOffset =>
+      response.cluster().leaderFor(partitionAndOffset._1) != null
+    }
 
-    val partitionsWithErrorResults = partitionsWithError.keys.map( partition =>
+    val partitionsWithErrorResults = partitionsWithError.keys.map(partition =>
       partition -> DeleteRecordsResult(DeleteRecordsResponse.INVALID_LOW_WATERMARK, response.errors().get(partition.topic()).exception())).toMap
 
-    val partitionsWithoutLeaderResults = partitionsWithoutLeader.mapValues( _ =>
+    val partitionsWithoutLeaderResults = partitionsWithoutLeader.mapValues(_ =>
       DeleteRecordsResult(DeleteRecordsResponse.INVALID_LOW_WATERMARK, Errors.LEADER_NOT_AVAILABLE.exception()))
 
     val partitionsGroupByLeader = partitionsWithLeader.groupBy(partitionAndOffset =>
       response.cluster().leaderFor(partitionAndOffset._1))
 
     // prepare requests and generate Future objects
-    val futures = partitionsGroupByLeader.map{ case (node, partitionAndOffsets) =>
-      val convertedMap: java.util.Map[TopicPartition, java.lang.Long] = partitionAndOffsets.mapValues(_.asInstanceOf[java.lang.Long]).asJava
-      val future = client.send(node, new DeleteRecordsRequest.Builder(requestTimeoutMs, convertedMap))
-      pendingFutures.add(future)
-      future.compose(new RequestFutureAdapter[ClientResponse, Map[TopicPartition, DeleteRecordsResult]]() {
+    val futures = partitionsGroupByLeader.map {
+      case (node, partitionAndOffsets) =>
+        val convertedMap: java.util.Map[TopicPartition, java.lang.Long] = partitionAndOffsets.mapValues(_.asInstanceOf[java.lang.Long]).asJava
+        val future = client.send(node, new DeleteRecordsRequest.Builder(requestTimeoutMs, convertedMap))
+        pendingFutures.add(future)
+        future.compose(new RequestFutureAdapter[ClientResponse, Map[TopicPartition, DeleteRecordsResult]]() {
           override def onSuccess(response: ClientResponse, future: RequestFuture[Map[TopicPartition, DeleteRecordsResult]]) {
             val deleteRecordsResponse = response.responseBody().asInstanceOf[DeleteRecordsResponse]
             val result = deleteRecordsResponse.responses().asScala.mapValues(v => DeleteRecordsResult(v.lowWatermark, v.error.exception())).toMap
@@ -288,22 +293,24 @@ class AdminClient(val time: Time,
   /**
    * Case class used to represent a consumer of a consumer group
    */
-  case class ConsumerSummary(consumerId: String,
-                             clientId: String,
-                             host: String,
-                             assignment: List[TopicPartition])
+  case class ConsumerSummary(
+    consumerId: String,
+    clientId: String,
+    host: String,
+    assignment: List[TopicPartition])
 
   /**
    * Case class used to represent group metadata (including the group coordinator) for the DescribeGroup API
    */
-  case class ConsumerGroupSummary(state: String,
-                                  assignmentStrategy: String,
-                                  consumers: Option[List[ConsumerSummary]],
-                                  coordinator: Node)
+  case class ConsumerGroupSummary(
+    state: String,
+    assignmentStrategy: String,
+    consumers: Option[List[ConsumerSummary]],
+    coordinator: Node)
 
   def describeConsumerGroupHandler(coordinator: Node, groupId: String): GroupMetadata = {
     val responseBody = send(coordinator, ApiKeys.DESCRIBE_GROUPS,
-        new DescribeGroupsRequest.Builder(Collections.singletonList(groupId)))
+      new DescribeGroupsRequest.Builder(Collections.singletonList(groupId)))
     val response = responseBody.asInstanceOf[DescribeGroupsResponse]
     val metadata = response.groups.get(groupId)
     if (metadata == null)
@@ -401,13 +408,14 @@ class AdminClient(val time: Time,
       }
     }
 
-    groupsPerCoordinator.foreach { case (coordinator, groups) =>
-      val responseBody = send(coordinator, ApiKeys.DELETE_GROUPS, new DeleteGroupsRequest.Builder(groups.toSet.asJava))
-      val response = responseBody.asInstanceOf[DeleteGroupsResponse]
-      groups.foreach {
-        case group if response.hasError(group) => errors += group -> response.errors.get(group)
-        case group => errors += group -> Errors.NONE
-      }
+    groupsPerCoordinator.foreach {
+      case (coordinator, groups) =>
+        val responseBody = send(coordinator, ApiKeys.DELETE_GROUPS, new DeleteGroupsRequest.Builder(groups.toSet.asJava))
+        val response = responseBody.asInstanceOf[DeleteGroupsResponse]
+        groups.foreach {
+          case group if response.hasError(group) => errors += group -> response.errors.get(group)
+          case group => errors += group -> Errors.NONE
+        }
     }
 
     errors
@@ -428,9 +436,10 @@ class AdminClient(val time: Time,
 /*
  * CompositeFuture assumes that the future object in the futures list does not raise error
  */
-class CompositeFuture[T](time: Time,
-                         defaultResults: Map[TopicPartition, T],
-                         futures: List[RequestFuture[Map[TopicPartition, T]]]) extends Future[Map[TopicPartition, T]] {
+class CompositeFuture[T](
+  time: Time,
+  defaultResults: Map[TopicPartition, T],
+  futures: List[RequestFuture[Map[TopicPartition, T]]]) extends Future[Map[TopicPartition, T]] {
 
   override def isCancelled = false
 
@@ -445,7 +454,7 @@ class CompositeFuture[T](time: Time,
     val timeoutMs = unit.toMillis(timeout)
     var remaining: Long = timeoutMs
 
-    val observedResults = futures.flatMap{ future =>
+    val observedResults = futures.flatMap { future =>
       val elapsed = time.milliseconds() - start
       remaining = if (timeoutMs - elapsed > 0) timeoutMs - elapsed else 0L
 
@@ -504,7 +513,7 @@ object AdminClient {
 
   case class DeleteRecordsResult(lowWatermark: Long, error: Exception)
 
-  class AdminConfig(originals: Map[_,_]) extends AbstractConfig(AdminConfigDef, originals.asJava, false)
+  class AdminConfig(originals: Map[_, _]) extends AbstractConfig(AdminConfigDef, originals.asJava, false)
 
   def createSimplePlaintext(brokerUrl: String): AdminClient = {
     val config = Map(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG -> brokerUrl)

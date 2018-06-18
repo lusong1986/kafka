@@ -20,7 +20,7 @@ package kafka.controller
 import kafka.cluster.Broker
 import org.apache.kafka.common.TopicPartition
 
-import scala.collection.{Seq, Set, mutable}
+import scala.collection.{ Seq, Set, mutable }
 
 class ControllerContext {
   val stats = new ControllerStats
@@ -68,8 +68,9 @@ class ControllerContext {
 
   def replicasOnBrokers(brokerIds: Set[Int]): Set[PartitionAndReplica] = {
     brokerIds.flatMap { brokerId =>
-      partitionReplicaAssignment.collect { case (topicPartition, replicas) if replicas.contains(brokerId) =>
-        PartitionAndReplica(topicPartition, brokerId)
+      partitionReplicaAssignment.collect {
+        case (topicPartition, replicas) if replicas.contains(brokerId) =>
+          PartitionAndReplica(topicPartition, brokerId)
       }
     }.toSet
   }
@@ -77,8 +78,9 @@ class ControllerContext {
   def replicasForTopic(topic: String): Set[PartitionAndReplica] = {
     partitionReplicaAssignment
       .filter { case (topicPartition, _) => topicPartition.topic == topic }
-      .flatMap { case (topicPartition, replicas) =>
-        replicas.map(PartitionAndReplica(topicPartition, _))
+      .flatMap {
+        case (topicPartition, replicas) =>
+          replicas.map(PartitionAndReplica(topicPartition, _))
       }.toSet
   }
 

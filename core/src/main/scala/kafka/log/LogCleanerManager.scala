@@ -27,12 +27,12 @@ import kafka.metrics.KafkaMetricsGroup
 import kafka.server.LogDirFailureChannel
 import kafka.server.checkpoints.OffsetCheckpointFile
 import kafka.utils.CoreUtils._
-import kafka.utils.{Logging, Pool}
+import kafka.utils.{ Logging, Pool }
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.errors.KafkaStorageException
 
-import scala.collection.{immutable, mutable}
+import scala.collection.{ immutable, mutable }
 
 private[log] sealed trait LogCleaningState
 private[log] case object LogCleaningInProgress extends LogCleaningState
@@ -47,9 +47,10 @@ private[log] case object LogCleaningPaused extends LogCleaningState
  *  While a partition is in the LogCleaningPaused state, it won't be scheduled for cleaning again, until cleaning is
  *  requested to be resumed.
  */
-private[log] class LogCleanerManager(val logDirs: Seq[File],
-                                     val logs: Pool[TopicPartition, Log],
-                                     val logDirFailureChannel: LogDirFailureChannel) extends Logging with KafkaMetricsGroup {
+private[log] class LogCleanerManager(
+  val logDirs: Seq[File],
+  val logs: Pool[TopicPartition, Log],
+  val logDirFailureChannel: LogDirFailureChannel) extends Logging with KafkaMetricsGroup {
 
   import LogCleanerManager._
 
@@ -76,7 +77,7 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
   newGauge("max-dirty-percent", new Gauge[Int] { def value = (100 * dirtiestLogCleanableRatio).toInt })
 
   /* a gauge for tracking the time since the last log cleaner run, in milli seconds */
-  @volatile private var timeOfLastRun : Long = Time.SYSTEM.milliseconds
+  @volatile private var timeOfLastRun: Long = Time.SYSTEM.milliseconds
   newGauge("time-since-last-run-ms", new Gauge[Long] { def value = Time.SYSTEM.milliseconds - timeOfLastRun })
 
   /**
@@ -97,8 +98,8 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
   }
 
   /**
-    * Package private for unit test. Get the cleaning state of the partition.
-    */
+   * Package private for unit test. Get the cleaning state of the partition.
+   */
   private[log] def cleaningState(tp: TopicPartition): Option[LogCleaningState] = {
     inLock(lock) {
       inProgress.get(tp)
@@ -106,26 +107,26 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
   }
 
   /**
-    * Package private for unit test. Set the cleaning state of the partition.
-    */
+   * Package private for unit test. Set the cleaning state of the partition.
+   */
   private[log] def setCleaningState(tp: TopicPartition, state: LogCleaningState): Unit = {
     inLock(lock) {
       inProgress.put(tp, state)
     }
   }
 
-   /**
-    * Choose the log to clean next and add it to the in-progress set. We recompute this
-    * each time from the full set of logs to allow logs to be dynamically added to the pool of logs
-    * the log manager maintains.
-    */
+  /**
+   * Choose the log to clean next and add it to the in-progress set. We recompute this
+   * each time from the full set of logs to allow logs to be dynamically added to the pool of logs
+   * the log manager maintains.
+   */
   def grabFilthiestCompactedLog(time: Time): Option[LogToClean] = {
     inLock(lock) {
       val now = time.milliseconds
       this.timeOfLastRun = now
       val lastClean = allCleanerCheckpoints
       val dirtyLogs = logs.filter {
-        case (_, log) => log.config.compact  // match logs that are marked as compacted
+        case (_, log) => log.config.compact // match logs that are marked as compacted
       }.filterNot {
         case (topicPartition, _) => inProgress.contains(topicPartition) // skip any logs already in-progress
       }.map {
@@ -138,7 +139,7 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
       this.dirtiestLogCleanableRatio = if (dirtyLogs.nonEmpty) dirtyLogs.max.cleanableRatio else 0
       // and must meet the minimum threshold for dirty byte ratio
       val cleanableLogs = dirtyLogs.filter(ltc => ltc.cleanableRatio > ltc.log.config.minCleanableRatio)
-      if(cleanableLogs.isEmpty) {
+      if (cleanableLogs.isEmpty) {
         None
       } else {
         val filthiest = cleanableLogs.max
@@ -149,12 +150,13 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
   }
 
   /**
-    * Find any logs that have compact and delete enabled
-    */
+   * Find any logs that have compact and delete enabled
+   */
   def deletableLogs(): Iterable[(TopicPartition, Log)] = {
     inLock(lock) {
-      val toClean = logs.filter { case (topicPartition, log) =>
-        !inProgress.contains(topicPartition) && isCompactAndDelete(log)
+      val toClean = logs.filter {
+        case (topicPartition, log) =>
+          !inProgress.contains(topicPartition) && isCompactAndDelete(log)
       }
       toClean.foreach { case (tp, _) => inProgress.put(tp, LogCleaningInProgress) }
       toClean
@@ -249,7 +251,7 @@ private[log] class LogCleanerManager(val logDirs: Seq[File],
     }
   }
 
-  def updateCheckpoints(dataDir: File, update: Option[(TopicPartition,Long)]) {
+  def updateCheckpoints(dataDir: File, update: Option[(TopicPartition, Long)]) {
     inLock(lock) {
       val checkpoint = checkpoints(dataDir)
       if (checkpoint != null) {
@@ -341,15 +343,14 @@ private[log] object LogCleanerManager extends Logging {
     log.config.compact && log.config.delete
   }
 
-
   /**
-    * Returns the range of dirty offsets that can be cleaned.
-    *
-    * @param log the log
-    * @param lastClean the map of checkpointed offsets
-    * @param now the current time in milliseconds of the cleaning operation
-    * @return the lower (inclusive) and upper (exclusive) offsets
-    */
+   * Returns the range of dirty offsets that can be cleaned.
+   *
+   * @param log the log
+   * @param lastClean the map of checkpointed offsets
+   * @param now the current time in milliseconds of the cleaning operation
+   * @return the lower (inclusive) and upper (exclusive) offsets
+   */
   def cleanableOffsets(log: Log, topicPartition: TopicPartition, lastClean: immutable.Map[TopicPartition, Long], now: Long): (Long, Long) = {
 
     // the checkpointed offset, ie., the first offset of the next dirty segment
@@ -392,8 +393,7 @@ private[log] object LogCleanerManager extends Logging {
           debug(s"Checking if log segment may be cleaned: log='${log.name}' segment.baseOffset=${s.baseOffset} segment.largestTimestamp=${s.largestTimestamp}; now - compactionLag=${now - compactionLagMs}; is uncleanable=$isUncleanable")
           isUncleanable
         }.map(_.baseOffset)
-      } else None
-    ).flatten.min
+      } else None).flatten.min
 
     debug(s"Finding range of cleanable offsets for log=${log.name} topicPartition=$topicPartition. Last clean offset=$lastCleanOffset now=$now => firstDirtyOffset=$firstDirtyOffset firstUncleanableOffset=$firstUncleanableDirtyOffset activeSegment.baseOffset=${log.activeSegment.baseOffset}")
 

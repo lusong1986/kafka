@@ -22,7 +22,7 @@ import java.util.Properties
 
 import kafka.admin.AdminClient.DeleteRecordsResult
 import kafka.common.AdminCommandFailedException
-import kafka.utils.{CoreUtils, Json, CommandLineUtils}
+import kafka.utils.{ CoreUtils, Json, CommandLineUtils }
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.clients.CommonClientConfigs
@@ -53,7 +53,7 @@ object DeleteRecordsCommand {
   def execute(args: Array[String], out: PrintStream): Unit = {
     val opts = new DeleteRecordsCommandOptions(args)
     val adminClient = createAdminClient(opts)
-    val offsetJsonFile =  opts.options.valueOf(opts.offsetJsonFileOpt)
+    val offsetJsonFile = opts.options.valueOf(opts.offsetJsonFileOpt)
     val offsetJsonString = Utils.readFileAsString(offsetJsonFile)
     val offsetSeq = parseOffsetJsonStringWithoutDedup(offsetJsonString)
 
@@ -65,12 +65,14 @@ object DeleteRecordsCommand {
     val deleteRecordsResult: Map[TopicPartition, DeleteRecordsResult] = adminClient.deleteRecordsBefore(offsetSeq.toMap).get()
     out.println("Records delete operation completed:")
 
-    deleteRecordsResult.foreach{ case (tp, partitionResult) => {
-      if (partitionResult.error == null)
-        out.println(s"partition: $tp\tlow_watermark: ${partitionResult.lowWatermark}")
-      else
-        out.println(s"partition: $tp\terror: ${partitionResult.error.toString}")
-    }}
+    deleteRecordsResult.foreach {
+      case (tp, partitionResult) => {
+        if (partitionResult.error == null)
+          out.println(s"partition: $tp\tlow_watermark: ${partitionResult.lowWatermark}")
+        else
+          out.println(s"partition: $tp\terror: ${partitionResult.error.toString}")
+      }
+    }
     adminClient.close()
   }
 
@@ -86,24 +88,24 @@ object DeleteRecordsCommand {
   class DeleteRecordsCommandOptions(args: Array[String]) {
     val BootstrapServerDoc = "REQUIRED: The server to connect to."
     val offsetJsonFileDoc = "REQUIRED: The JSON file with offset per partition. The format to use is:\n" +
-                                 "{\"partitions\":\n  [{\"topic\": \"foo\", \"partition\": 1, \"offset\": 1}],\n \"version\":1\n}"
+      "{\"partitions\":\n  [{\"topic\": \"foo\", \"partition\": 1, \"offset\": 1}],\n \"version\":1\n}"
     val CommandConfigDoc = "A property file containing configs to be passed to Admin Client."
 
     val parser = new OptionParser(false)
     val bootstrapServerOpt = parser.accepts("bootstrap-server", BootstrapServerDoc)
-                                   .withRequiredArg
-                                   .describedAs("server(s) to use for bootstrapping")
-                                   .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("server(s) to use for bootstrapping")
+      .ofType(classOf[String])
     val offsetJsonFileOpt = parser.accepts("offset-json-file", offsetJsonFileDoc)
-                                   .withRequiredArg
-                                   .describedAs("Offset json file path")
-                                   .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("Offset json file path")
+      .ofType(classOf[String])
     val commandConfigOpt = parser.accepts("command-config", CommandConfigDoc)
-                                   .withRequiredArg
-                                   .describedAs("command config property file path")
-                                   .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("command config property file path")
+      .ofType(classOf[String])
 
-    val options = parser.parse(args : _*)
+    val options = parser.parse(args: _*)
     CommandLineUtils.checkRequiredArgs(parser, options, bootstrapServerOpt, offsetJsonFileOpt)
   }
 }

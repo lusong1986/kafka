@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.api
 
@@ -30,11 +30,12 @@ object TopicMetadataRequest extends Logging {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class TopicMetadataRequest(versionId: Short,
-                                correlationId: Int,
-                                clientId: String,
-                                topics: Seq[String])
- extends RequestOrResponse(Some(ApiKeys.METADATA.id)){
+case class TopicMetadataRequest(
+  versionId: Short,
+  correlationId: Int,
+  clientId: String,
+  topics: Seq[String])
+  extends RequestOrResponse(Some(ApiKeys.METADATA.id)) {
 
   def this(topics: Seq[String], correlationId: Int) =
     this(TopicMetadataRequest.CurrentVersion, correlationId, TopicMetadataRequest.DefaultClientId, topics)
@@ -48,11 +49,11 @@ case class TopicMetadataRequest(versionId: Short,
   }
 
   def sizeInBytes: Int = {
-    2 +  /* version id */
-    4 + /* correlation id */
-    shortStringLength(clientId)  + /* client id */
-    4 + /* number of topics */
-    topics.foldLeft(0)(_ + shortStringLength(_)) /* topics */
+    2 + /* version id */
+      4 + /* correlation id */
+      shortStringLength(clientId) + /* client id */
+      4 + /* number of topics */
+      topics.foldLeft(0)(_ + shortStringLength(_)) /* topics */
   }
 
   override def toString: String = {
@@ -65,7 +66,7 @@ case class TopicMetadataRequest(versionId: Short,
     topicMetadataRequest.append("; Version: " + versionId)
     topicMetadataRequest.append("; CorrelationId: " + correlationId)
     topicMetadataRequest.append("; ClientId: " + clientId)
-    if(details)
+    if (details)
       topicMetadataRequest.append("; Topics: " + topics.mkString(","))
     topicMetadataRequest.toString()
   }

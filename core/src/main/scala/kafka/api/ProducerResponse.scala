@@ -44,18 +44,19 @@ object ProducerResponse {
     })
 
     val throttleTime = buffer.getInt
-    ProducerResponse(correlationId, Map(statusPairs:_*), ProducerRequest.CurrentVersion, throttleTime)
+    ProducerResponse(correlationId, Map(statusPairs: _*), ProducerRequest.CurrentVersion, throttleTime)
   }
 }
 
 case class ProducerResponseStatus(var error: Errors, offset: Long, timestamp: Long = Message.NoTimestamp)
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class ProducerResponse(correlationId: Int,
-                            status: Map[TopicAndPartition, ProducerResponseStatus],
-                            requestVersion: Int = 0,
-                            throttleTime: Int = 0)
-    extends RequestOrResponse() {
+case class ProducerResponse(
+  correlationId: Int,
+  status: Map[TopicAndPartition, ProducerResponseStatus],
+  requestVersion: Int = 0,
+  throttleTime: Int = 0)
+  extends RequestOrResponse() {
 
   /**
    * Partitions the status map into a map of maps (one for each topic).
@@ -68,19 +69,19 @@ case class ProducerResponse(correlationId: Int,
     val throttleTimeSize = if (requestVersion > 0) 4 else 0
     val groupedStatus = statusGroupedByTopic
     4 + /* correlation id */
-    4 + /* topic count */
-    groupedStatus.foldLeft (0) ((foldedTopics, currTopic) => {
-      foldedTopics +
-      shortStringLength(currTopic._1) +
-      4 + /* partition count for this topic */
-      currTopic._2.size * {
-        4 + /* partition id */
-        2 + /* error code */
-        8 + /* offset */
-        8 /* timestamp */
-      }
-    }) +
-    throttleTimeSize
+      4 + /* topic count */
+      groupedStatus.foldLeft(0)((foldedTopics, currTopic) => {
+        foldedTopics +
+          shortStringLength(currTopic._1) +
+          4 + /* partition count for this topic */
+          currTopic._2.size * {
+            4 + /* partition id */
+              2 + /* error code */
+              8 + /* offset */
+              8 /* timestamp */
+          }
+      }) +
+      throttleTimeSize
   }
 
   def writeTo(buffer: ByteBuffer) {
@@ -93,7 +94,7 @@ case class ProducerResponse(correlationId: Int,
       writeShortString(buffer, topic)
       buffer.putInt(errorsAndOffsets.size) // partition count
       errorsAndOffsets.foreach {
-        case((TopicAndPartition(_, partition), ProducerResponseStatus(error, nextOffset, timestamp))) =>
+        case ((TopicAndPartition(_, partition), ProducerResponseStatus(error, nextOffset, timestamp))) =>
           buffer.putInt(partition)
           buffer.putShort(error.code)
           buffer.putLong(nextOffset)
@@ -105,6 +106,6 @@ case class ProducerResponse(correlationId: Int,
       buffer.putInt(throttleTime)
   }
 
-  override def describe(details: Boolean):String = { toString }
+  override def describe(details: Boolean): String = { toString }
 }
 

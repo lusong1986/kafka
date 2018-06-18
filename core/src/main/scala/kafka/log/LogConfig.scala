@@ -17,20 +17,34 @@
 
 package kafka.log
 
-import java.util.{Collections, Locale, Properties}
+import java.util.Collections
+import java.util.Locale
+import java.util.Properties
 
-import scala.collection.JavaConverters._
-import kafka.api.ApiVersion
-import kafka.message.{BrokerCompressionCodec, Message}
-import kafka.server.{KafkaConfig, ThrottledReplicaListValidator}
-import kafka.utils.Implicits._
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.asScalaSetConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.propertiesAsScalaMapConverter
+import scala.collection.JavaConverters.seqAsJavaListConverter
+import scala.collection.Map
+import scala.collection.mutable
+
+import org.apache.kafka.common.config.AbstractConfig
+import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.ConfigDef.ConfigKey
+import org.apache.kafka.common.config.ConfigDef.ValidList
+import org.apache.kafka.common.config.ConfigDef.Validator
+import org.apache.kafka.common.config.TopicConfig
 import org.apache.kafka.common.errors.InvalidConfigurationException
-import org.apache.kafka.common.config.{AbstractConfig, ConfigDef, TopicConfig}
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.utils.Utils
 
-import scala.collection.{Map, mutable}
-import org.apache.kafka.common.config.ConfigDef.{ConfigKey, ValidList, Validator}
+import kafka.api.ApiVersion
+import kafka.message.BrokerCompressionCodec
+import kafka.message.Message
+import kafka.server.KafkaConfig
+import kafka.server.ThrottledReplicaListValidator
+import kafka.utils.Implicits.PropertiesOps
 
 object Defaults {
   val SegmentSize = kafka.server.Defaults.LogSegmentBytes
@@ -49,7 +63,7 @@ object Defaults {
   val MinCleanableDirtyRatio = kafka.server.Defaults.LogCleanerMinCleanRatio
 
   @deprecated(message = "This is a misleading variable name as it actually refers to the 'delete' cleanup policy. Use " +
-                        "`CleanupPolicy` instead.", since = "1.0.0")
+    "`CleanupPolicy` instead.", since = "1.0.0")
   val Compact = kafka.server.Defaults.LogCleanupPolicy
 
   val CleanupPolicy = kafka.server.Defaults.LogCleanupPolicy
@@ -173,21 +187,21 @@ object LogConfig {
     private final val serverDefaultConfigNames = mutable.Map[String, String]()
 
     def define(name: String, defType: ConfigDef.Type, defaultValue: Any, validator: Validator,
-               importance: ConfigDef.Importance, doc: String, serverDefaultConfigName: String): LogConfigDef = {
+      importance: ConfigDef.Importance, doc: String, serverDefaultConfigName: String): LogConfigDef = {
       super.define(name, defType, defaultValue, validator, importance, doc)
       serverDefaultConfigNames.put(name, serverDefaultConfigName)
       this
     }
 
     def define(name: String, defType: ConfigDef.Type, defaultValue: Any, importance: ConfigDef.Importance,
-               documentation: String, serverDefaultConfigName: String): LogConfigDef = {
+      documentation: String, serverDefaultConfigName: String): LogConfigDef = {
       super.define(name, defType, defaultValue, importance, documentation)
       serverDefaultConfigNames.put(name, serverDefaultConfigName)
       this
     }
 
     def define(name: String, defType: ConfigDef.Type, importance: ConfigDef.Importance, documentation: String,
-               serverDefaultConfigName: String): LogConfigDef = {
+      serverDefaultConfigName: String): LogConfigDef = {
       super.define(name, defType, importance, documentation)
       serverDefaultConfigNames.put(name, serverDefaultConfigName)
       this
@@ -248,7 +262,7 @@ object LogConfig {
         MEDIUM, UncleanLeaderElectionEnableDoc, KafkaConfig.UncleanLeaderElectionEnableProp)
       .define(MinInSyncReplicasProp, INT, Defaults.MinInSyncReplicas, atLeast(1), MEDIUM, MinInSyncReplicasDoc,
         KafkaConfig.MinInSyncReplicasProp)
-      .define(CompressionTypeProp, STRING, Defaults.CompressionType, in(BrokerCompressionCodec.brokerCompressionOptions:_*),
+      .define(CompressionTypeProp, STRING, Defaults.CompressionType, in(BrokerCompressionCodec.brokerCompressionOptions: _*),
         MEDIUM, CompressionTypeDoc, KafkaConfig.CompressionTypeProp)
       .define(PreAllocateEnableProp, BOOLEAN, Defaults.PreAllocateEnable, MEDIUM, PreAllocateEnableDoc,
         KafkaConfig.LogPreAllocateProp)
@@ -286,7 +300,7 @@ object LogConfig {
    */
   def validateNames(props: Properties) {
     val names = configNames
-    for(name <- props.asScala.keys)
+    for (name <- props.asScala.keys)
       if (!names.contains(name))
         throw new InvalidConfigurationException(s"Unknown topic config name: $name")
   }
@@ -325,7 +339,6 @@ object LogConfig {
     PreAllocateEnableProp -> KafkaConfig.LogPreAllocateProp,
     MessageFormatVersionProp -> KafkaConfig.LogMessageFormatVersionProp,
     MessageTimestampTypeProp -> KafkaConfig.LogMessageTimestampTypeProp,
-    MessageTimestampDifferenceMaxMsProp -> KafkaConfig.LogMessageTimestampDifferenceMaxMsProp
-  )
+    MessageTimestampDifferenceMaxMsProp -> KafkaConfig.LogMessageTimestampDifferenceMaxMsProp)
 
 }

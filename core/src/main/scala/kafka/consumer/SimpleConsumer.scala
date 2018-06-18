@@ -17,15 +17,14 @@
 
 package kafka.consumer
 
-
-import java.nio.channels.{AsynchronousCloseException, ClosedByInterruptException}
+import java.nio.channels.{ AsynchronousCloseException, ClosedByInterruptException }
 import java.util.concurrent.TimeUnit
 
 import kafka.api._
 import kafka.network._
 import kafka.utils._
-import kafka.common.{ErrorMapping, TopicAndPartition}
-import org.apache.kafka.common.network.{NetworkReceive}
+import kafka.common.{ ErrorMapping, TopicAndPartition }
+import org.apache.kafka.common.network.{ NetworkReceive }
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.utils.Utils._
 
@@ -33,13 +32,14 @@ import org.apache.kafka.common.utils.Utils._
  * A consumer of kafka messages
  */
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.KafkaConsumer instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.KafkaConsumer instead.", "0.11.0.0")
 @threadsafe
-class SimpleConsumer(val host: String,
-                     val port: Int,
-                     val soTimeout: Int,
-                     val bufferSize: Int,
-                     val clientId: String) extends Logging {
+class SimpleConsumer(
+  val host: String,
+  val port: Int,
+  val soTimeout: Int,
+  val bufferSize: Int,
+  val clientId: String) extends Logging {
 
   ConsumerConfig.validateClientId(clientId)
   private val lock = new Object()
@@ -88,12 +88,12 @@ class SimpleConsumer(val host: String,
         blockingChannel.send(request)
         response = blockingChannel.receive()
       } catch {
-        case e : ClosedByInterruptException =>
+        case e: ClosedByInterruptException =>
           throw e
         // Should not observe this exception when running Kafka with Java 1.8
         case e: AsynchronousCloseException =>
           throw e
-        case e : Throwable =>
+        case e: Throwable =>
           info("Reconnect due to error:", e)
           // retry once
           try {
@@ -172,7 +172,7 @@ class SimpleConsumer(val host: String,
   def fetchOffsets(request: OffsetFetchRequest) = OffsetFetchResponse.readFrom(sendRequest(request).payload(), request.versionId)
 
   private def getOrMakeConnection() {
-    if(!isClosed && !blockingChannel.isConnected) {
+    if (!isClosed && !blockingChannel.isConnected) {
       connect()
     }
   }
@@ -185,9 +185,10 @@ class SimpleConsumer(val host: String,
    * @return Requested offset.
    */
   def earliestOrLatestOffset(topicAndPartition: TopicAndPartition, earliestOrLatest: Long, consumerId: Int): Long = {
-    val request = OffsetRequest(requestInfo = Map(topicAndPartition -> PartitionOffsetRequestInfo(earliestOrLatest, 1)),
-                                clientId = clientId,
-                                replicaId = consumerId)
+    val request = OffsetRequest(
+      requestInfo = Map(topicAndPartition -> PartitionOffsetRequestInfo(earliestOrLatest, 1)),
+      clientId = clientId,
+      replicaId = consumerId)
     val partitionErrorAndOffset = getOffsetsBefore(request).partitionErrorAndOffsets(topicAndPartition)
     val offset = partitionErrorAndOffset.error match {
       case Errors.NONE => partitionErrorAndOffset.offsets.head

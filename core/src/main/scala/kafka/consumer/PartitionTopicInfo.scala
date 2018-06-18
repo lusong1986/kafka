@@ -23,13 +23,14 @@ import kafka.message._
 import kafka.utils.Logging
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-class PartitionTopicInfo(val topic: String,
-                         val partitionId: Int,
-                         private val chunkQueue: BlockingQueue[FetchedDataChunk],
-                         private val consumedOffset: AtomicLong,
-                         private val fetchedOffset: AtomicLong,
-                         private val fetchSize: AtomicInteger,
-                         private val clientId: String) extends Logging {
+class PartitionTopicInfo(
+  val topic: String,
+  val partitionId: Int,
+  private val chunkQueue: BlockingQueue[FetchedDataChunk],
+  private val consumedOffset: AtomicLong,
+  private val fetchedOffset: AtomicLong,
+  private val fetchSize: AtomicInteger,
+  private val clientId: String) extends Logging {
 
   debug("initial consumer offset of " + this + " is " + consumedOffset.get)
   debug("initial fetch offset of " + this + " is " + fetchedOffset.get)
@@ -55,7 +56,7 @@ class PartitionTopicInfo(val topic: String,
    */
   def enqueue(messages: ByteBufferMessageSet) {
     val size = messages.validBytes
-    if(size > 0) {
+    if (size > 0) {
       val next = messages.shallowIterator.toSeq.last.nextOffset
       trace("Updating fetch offset = " + fetchedOffset.get + " to " + next)
       chunkQueue.put(new FetchedDataChunk(messages, this, fetchedOffset.get))
@@ -63,7 +64,7 @@ class PartitionTopicInfo(val topic: String,
       debug("updated fetch offset of (%s) to %d".format(this, next))
       consumerTopicStats.getConsumerTopicStats(topic).byteRate.mark(size)
       consumerTopicStats.getConsumerAllTopicStats().byteRate.mark(size)
-    } else if(messages.sizeInBytes > 0) {
+    } else if (messages.sizeInBytes > 0) {
       chunkQueue.put(new FetchedDataChunk(messages, this, fetchedOffset.get))
     }
   }

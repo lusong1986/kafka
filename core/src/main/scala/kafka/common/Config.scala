@@ -35,6 +35,3 @@ trait Config extends Logging {
   }
 }
 
-
-
-

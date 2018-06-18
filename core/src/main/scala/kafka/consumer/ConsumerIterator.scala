@@ -17,13 +17,12 @@
 
 package kafka.consumer
 
-import kafka.utils.{IteratorTemplate, Logging}
-import java.util.concurrent.{TimeUnit, BlockingQueue}
+import kafka.utils.{ IteratorTemplate, Logging }
+import java.util.concurrent.{ TimeUnit, BlockingQueue }
 import kafka.serializer.Decoder
 import java.util.concurrent.atomic.AtomicReference
-import kafka.message.{MessageAndOffset, MessageAndMetadata}
-import kafka.common.{KafkaException, MessageSizeTooLargeException}
-
+import kafka.message.{ MessageAndOffset, MessageAndMetadata }
+import kafka.common.{ KafkaException, MessageSizeTooLargeException }
 
 /**
  * An iterator that blocks until a value can be read from the supplied queue.
@@ -31,11 +30,12 @@ import kafka.common.{KafkaException, MessageSizeTooLargeException}
  *
  */
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk],
-                             consumerTimeoutMs: Int,
-                             private val keyDecoder: Decoder[K],
-                             private val valueDecoder: Decoder[V],
-                             val clientId: String)
+class ConsumerIterator[K, V](
+  private val channel: BlockingQueue[FetchedDataChunk],
+  consumerTimeoutMs: Int,
+  private val keyDecoder: Decoder[K],
+  private val valueDecoder: Decoder[V],
+  val clientId: String)
   extends IteratorTemplate[MessageAndMetadata[K, V]] with Logging {
 
   private val current: AtomicReference[Iterator[MessageAndOffset]] = new AtomicReference(null)
@@ -45,7 +45,7 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
 
   override def next(): MessageAndMetadata[K, V] = {
     val item = super.next()
-    if(consumedOffset < 0)
+    if (consumedOffset < 0)
       throw new KafkaException("Offset returned by the message set is invalid %d".format(consumedOffset))
     currentTopicInfo.resetConsumeOffset(consumedOffset)
     val topic = currentTopicInfo.topic
@@ -59,7 +59,7 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
     var currentDataChunk: FetchedDataChunk = null
     // if we don't have an iterator, get one
     var localCurrent = current.get()
-    if(localCurrent == null || !localCurrent.hasNext) {
+    if (localCurrent == null || !localCurrent.hasNext) {
       if (consumerTimeoutMs < 0)
         currentDataChunk = channel.take
       else {
@@ -70,7 +70,7 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
           throw new ConsumerTimeoutException
         }
       }
-      if(currentDataChunk eq ZookeeperConsumerConnector.shutdownCommand) {
+      if (currentDataChunk eq ZookeeperConsumerConnector.shutdownCommand) {
         debug("Received the shutdown command")
         return allDone
       } else {
@@ -87,10 +87,10 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
         current.set(localCurrent)
       }
       // if we just updated the current chunk and it is empty that means the fetch size is too small!
-      if(currentDataChunk.messages.validBytes == 0)
+      if (currentDataChunk.messages.validBytes == 0)
         throw new MessageSizeTooLargeException("Found a message larger than the maximum fetch size of this consumer on topic " +
-                                               "%s partition %d at fetch offset %d. Increase the fetch size, or decrease the maximum message size the broker will allow."
-                                               .format(currentDataChunk.topicInfo.topic, currentDataChunk.topicInfo.partitionId, currentDataChunk.fetchOffset))
+          "%s partition %d at fetch offset %d. Increase the fetch size, or decrease the maximum message size the broker will allow."
+          .format(currentDataChunk.topicInfo.topic, currentDataChunk.topicInfo.partitionId, currentDataChunk.fetchOffset))
     }
     var item = localCurrent.next()
     // reject the messages that have already been consumed
@@ -101,14 +101,15 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
 
     item.message.ensureValid() // validate checksum of message to ensure it is valid
 
-    new MessageAndMetadata(currentTopicInfo.topic,
-                           currentTopicInfo.partitionId,
-                           item.message,
-                           item.offset,
-                           keyDecoder,
-                           valueDecoder,
-                           item.message.timestamp,
-                           item.message.timestampType)
+    new MessageAndMetadata(
+      currentTopicInfo.topic,
+      currentTopicInfo.partitionId,
+      item.message,
+      item.offset,
+      keyDecoder,
+      valueDecoder,
+      item.message.timestamp,
+      item.message.timestampType)
   }
 
   def clearCurrentChunk() {
@@ -118,6 +119,6 @@ class ConsumerIterator[K, V](private val channel: BlockingQueue[FetchedDataChunk
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.common.errors.TimeoutException instead.", "0.11.0.0")
+  "Please use org.apache.kafka.common.errors.TimeoutException instead.", "0.11.0.0")
 class ConsumerTimeoutException() extends RuntimeException()
 

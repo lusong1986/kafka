@@ -20,12 +20,12 @@ package kafka.admin
 import java.nio.ByteBuffer
 
 import joptsimple._
-import kafka.utils.{CommandLineUtils, Exit, Logging}
+import kafka.utils.{ CommandLineUtils, Exit, Logging }
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.token.delegation.DelegationToken
-import org.apache.kafka.common.utils.{Base64, SecurityUtils, Utils}
+import org.apache.kafka.common.utils.{ Base64, SecurityUtils, Utils }
 
 import scala.collection.JavaConverters._
 import scala.collection.Set
@@ -38,12 +38,12 @@ object DelegationTokenCommand extends Logging {
   def main(args: Array[String]): Unit = {
     val opts = new DelegationTokenCommandOptions(args)
 
-    if(args.length == 0)
+    if (args.length == 0)
       CommandLineUtils.printUsageAndDie(opts.parser, "Tool to create, renew, expire, or describe delegation tokens.")
 
     // should have exactly one action
     val actions = Seq(opts.createOpt, opts.renewOpt, opts.expiryOpt, opts.describeOpt).count(opts.options.has _)
-    if(actions != 1)
+    if (actions != 1)
       CommandLineUtils.printUsageAndDie(opts.parser, "Command must include exactly one action: --create, --renew, --expire or --describe")
 
     opts.checkArgs()
@@ -52,13 +52,13 @@ object DelegationTokenCommand extends Logging {
 
     var exitCode = 0
     try {
-      if(opts.options.has(opts.createOpt))
+      if (opts.options.has(opts.createOpt))
         createToken(adminClient, opts)
-      else if(opts.options.has(opts.renewOpt))
+      else if (opts.options.has(opts.renewOpt))
         renewToken(adminClient, opts)
-      else if(opts.options.has(opts.expiryOpt))
+      else if (opts.options.has(opts.expiryOpt))
         expireToken(adminClient, opts)
-      else if(opts.options.has(opts.describeOpt))
+      else if (opts.options.has(opts.describeOpt))
         describeToken(adminClient, opts)
     } catch {
       case e: Throwable =>
@@ -75,11 +75,12 @@ object DelegationTokenCommand extends Logging {
     val renewerPrincipals = getPrincipals(opts, opts.renewPrincipalsOpt)
     val maxLifeTimeMs = opts.options.valueOf(opts.maxLifeTimeOpt).longValue
 
-    println("Calling create token operation with renewers :" + renewerPrincipals +" , max-life-time-period :"+ maxLifeTimeMs)
+    println("Calling create token operation with renewers :" + renewerPrincipals + " , max-life-time-period :" + maxLifeTimeMs)
     val response = adminClient.createToken(renewerPrincipals, maxLifeTimeMs)
-    response  match {
-        case (Errors.NONE, token) => println("Created delegation token with tokenId : %s".format(token.tokenInfo.tokenId)); printToken(List(token))
-        case (e, _) =>  throw new AdminOperationException(e.message)
+    response match {
+      case (Errors.NONE, token) =>
+        println("Created delegation token with tokenId : %s".format(token.tokenInfo.tokenId)); printToken(List(token))
+      case (e, _) => throw new AdminOperationException(e.message)
     }
   }
 
@@ -109,7 +110,7 @@ object DelegationTokenCommand extends Logging {
   def renewToken(adminClient: AdminClient, opts: DelegationTokenCommandOptions) = {
     val hmac = opts.options.valueOf(opts.hmacOpt)
     val renewTimePeriodMs = opts.options.valueOf(opts.renewTimePeriodOpt).longValue()
-    println("Calling renew token operation with hmac :" + hmac +" , renew-time-period :"+ renewTimePeriodMs)
+    println("Calling renew token operation with hmac :" + hmac + " , renew-time-period :" + renewTimePeriodMs)
     val response = adminClient.renewToken(ByteBuffer.wrap(Base64.decoder.decode(hmac)), renewTimePeriodMs)
     response match {
       case (Errors.NONE, expiryTimeStamp) => println("Completed renew operation. New expiry timestamp : %s".format(expiryTimeStamp))
@@ -120,7 +121,7 @@ object DelegationTokenCommand extends Logging {
   def expireToken(adminClient: AdminClient, opts: DelegationTokenCommandOptions) = {
     val hmac = opts.options.valueOf(opts.hmacOpt)
     val expiryTimePeriodMs = opts.options.valueOf(opts.expiryTimePeriodOpt).longValue()
-    println("Calling expire token operation with hmac :" + hmac +" , expire-time-period : "+ expiryTimePeriodMs)
+    println("Calling expire token operation with hmac :" + hmac + " , expire-time-period : " + expiryTimePeriodMs)
     val response = adminClient.expireToken(ByteBuffer.wrap(Base64.decoder.decode(hmac)), expiryTimePeriodMs)
     response match {
       case (Errors.NONE, expiryTimeStamp) => println("Completed expire operation. New expiry timestamp : %s".format(expiryTimeStamp))
@@ -132,8 +133,9 @@ object DelegationTokenCommand extends Logging {
     val ownerPrincipals = getPrincipals(opts, opts.ownerPrincipalsOpt)
     println("Calling describe token operation for owners :" + ownerPrincipals)
     val response = adminClient.describeToken(ownerPrincipals)
-    response  match {
-      case (Errors.NONE, tokens) => println("Total Number of tokens : %s".format(tokens.size)); printToken(tokens)
+    response match {
+      case (Errors.NONE, tokens) =>
+        println("Total Number of tokens : %s".format(tokens.size)); printToken(tokens)
       case (e, tokens) => throw new AdminOperationException(e.message)
     }
   }
@@ -151,14 +153,14 @@ object DelegationTokenCommand extends Logging {
 
     val parser = new OptionParser(false)
     val bootstrapServerOpt = parser.accepts("bootstrap-server", BootstrapServerDoc)
-                                   .withRequiredArg
-                                   .ofType(classOf[String])
+      .withRequiredArg
+      .ofType(classOf[String])
     val commandConfigOpt = parser.accepts("command-config", CommandConfigDoc)
       .withRequiredArg
       .ofType(classOf[String])
 
     val createOpt = parser.accepts("create", "Create a new delegation token.")
-    val renewOpt = parser.accepts("renew",  "Renew delegation token.")
+    val renewOpt = parser.accepts("renew", "Renew delegation token.")
     val expiryOpt = parser.accepts("expire", "Expire delegation token.")
     val describeOpt = parser.accepts("describe", "describe delegation tokens.")
 
@@ -181,7 +183,7 @@ object DelegationTokenCommand extends Logging {
       .ofType(classOf[Long])
 
     val expiryTimePeriodOpt = parser.accepts("expiry-time-period", "Expiry time period in milliseconds. If the value is -1, then the" +
-      " token will get invalidated immediately." )
+      " token will get invalidated immediately.")
       .withOptionalArg()
       .ofType(classOf[Long])
 
@@ -189,7 +191,7 @@ object DelegationTokenCommand extends Logging {
       .withOptionalArg
       .ofType(classOf[String])
 
-    val options = parser.parse(args : _*)
+    val options = parser.parse(args: _*)
 
     def checkArgs() {
       // check required args

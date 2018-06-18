@@ -17,18 +17,25 @@
 
 package kafka.log
 
-import java.io.{File, RandomAccessFile}
-import java.nio.{ByteBuffer, MappedByteBuffer}
+import java.io.File
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
-import java.util.concurrent.locks.{Lock, ReentrantLock}
-
-import kafka.log.IndexSearchType.IndexSearchEntity
-import kafka.utils.CoreUtils.inLock
-import kafka.utils.{CoreUtils, Logging}
-import org.apache.kafka.common.utils.{MappedByteBuffers, OperatingSystem, Utils}
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 
 import scala.math.ceil
+
+import org.apache.kafka.common.utils.MappedByteBuffers
+import org.apache.kafka.common.utils.OperatingSystem
+import org.apache.kafka.common.utils.Utils
+
+import kafka.log.IndexSearchType.IndexSearchEntity
+import kafka.utils.CoreUtils
+import kafka.utils.CoreUtils.inLock
+import kafka.utils.Logging
 
 /**
  * The abstract index class which holds entry format agnostic methods.
@@ -38,7 +45,7 @@ import scala.math.ceil
  * @param maxIndexSize The maximum index size in bytes.
  */
 abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Long,
-                                   val maxIndexSize: Int = -1, val writable: Boolean) extends Logging {
+  val maxIndexSize: Int = -1, val writable: Boolean) extends Logging {
 
   // Length of the index file
   @volatile
@@ -54,8 +61,8 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
     val raf = if (writable) new RandomAccessFile(file, "rw") else new RandomAccessFile(file, "r")
     try {
       /* pre-allocate the file if necessary */
-      if(newlyCreated) {
-        if(maxIndexSize < entrySize)
+      if (newlyCreated) {
+        if (maxIndexSize < entrySize)
           throw new IllegalArgumentException("Invalid max index size: " + maxIndexSize)
         raf.setLength(roundDownToExactMultiple(maxIndexSize, entrySize))
       }
@@ -69,7 +76,7 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
           raf.getChannel.map(FileChannel.MapMode.READ_ONLY, 0, _length)
       }
       /* set the position in the index for the next entry */
-      if(newlyCreated)
+      if (newlyCreated)
         idx.position(0)
       else
         // if this is a pre-existing index, assume it is valid and set position to last entry
@@ -287,23 +294,23 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
    */
   private def indexSlotRangeFor(idx: ByteBuffer, target: Long, searchEntity: IndexSearchEntity): (Int, Int) = {
     // check if the index is empty
-    if(_entries == 0)
+    if (_entries == 0)
       return (-1, -1)
 
     // check if the target offset is smaller than the least offset
-    if(compareIndexEntry(parseEntry(idx, 0), target, searchEntity) > 0)
+    if (compareIndexEntry(parseEntry(idx, 0), target, searchEntity) > 0)
       return (-1, 0)
 
     // binary search for the entry
     var lo = 0
     var hi = _entries - 1
-    while(lo < hi) {
-      val mid = ceil(hi/2.0 + lo/2.0).toInt
+    while (lo < hi) {
+      val mid = ceil(hi / 2.0 + lo / 2.0).toInt
       val found = parseEntry(idx, mid)
       val compareResult = compareIndexEntry(found, target, searchEntity)
-      if(compareResult > 0)
+      if (compareResult > 0)
         hi = mid - 1
-      else if(compareResult < 0)
+      else if (compareResult < 0)
         lo = mid
       else
         return (mid, mid)

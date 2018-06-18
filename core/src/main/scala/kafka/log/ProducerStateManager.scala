@@ -16,46 +16,62 @@
  */
 package kafka.log
 
-import java.io._
+import java.io.File
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.file.Files
+
+import scala.collection.immutable
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.InvalidTxnStateException
+import org.apache.kafka.common.errors.OutOfOrderSequenceException
+import org.apache.kafka.common.errors.ProducerFencedException
+import org.apache.kafka.common.errors.TransactionCoordinatorFencedException
+import org.apache.kafka.common.errors.UnknownProducerIdException
+import org.apache.kafka.common.internals.Topic
+import org.apache.kafka.common.protocol.types.ArrayOf
+import org.apache.kafka.common.protocol.types.Field
+import org.apache.kafka.common.protocol.types.Schema
+import org.apache.kafka.common.protocol.types.SchemaException
+import org.apache.kafka.common.protocol.types.Struct
+import org.apache.kafka.common.protocol.types.Type
+import org.apache.kafka.common.record.ControlRecordType
+import org.apache.kafka.common.record.EndTransactionMarker
+import org.apache.kafka.common.record.RecordBatch
+import org.apache.kafka.common.utils.ByteUtils
+import org.apache.kafka.common.utils.Crc32C
 
 import kafka.common.KafkaException
 import kafka.log.Log.offsetFromFile
 import kafka.server.LogOffsetMetadata
-import kafka.utils.{Logging, nonthreadsafe, threadsafe}
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors._
-import org.apache.kafka.common.internals.Topic
-import org.apache.kafka.common.protocol.types._
-import org.apache.kafka.common.record.{ControlRecordType, EndTransactionMarker, RecordBatch}
-import org.apache.kafka.common.utils.{ByteUtils, Crc32C}
-
-import scala.collection.mutable.ListBuffer
-import scala.collection.{immutable, mutable}
+import kafka.utils.Logging
+import kafka.utils.nonthreadsafe
+import kafka.utils.threadsafe
 
 class CorruptSnapshotException(msg: String) extends KafkaException(msg)
-
 
 // ValidationType and its subtypes define the extent of the validation to perform on a given ProducerAppendInfo instance
 private[log] sealed trait ValidationType
 private[log] object ValidationType {
 
   /**
-    * This indicates no validation should be performed on the incoming append. This is the case for all appends on
-    * a replica, as well as appends when the producer state is being built from the log.
-    */
+   * This indicates no validation should be performed on the incoming append. This is the case for all appends on
+   * a replica, as well as appends when the producer state is being built from the log.
+   */
   case object None extends ValidationType
 
   /**
-    * We only validate the epoch (and not the sequence numbers) for offset commit requests coming from the transactional
-    * producer. These appends will not have sequence numbers, so we can't validate them.
-    */
+   * We only validate the epoch (and not the sequence numbers) for offset commit requests coming from the transactional
+   * producer. These appends will not have sequence numbers, so we can't validate them.
+   */
   case object EpochOnly extends ValidationType
 
   /**
-    * Perform the full validation. This should be used fo regular produce requests coming to the leader.
-    */
+   * Perform the full validation. This should be used fo regular produce requests coming to the leader.
+   */
   case object Full extends ValidationType
 }
 
@@ -92,11 +108,12 @@ private[log] case class BatchMetadata(lastSeq: Int, lastOffset: Long, offsetDelt
 // the batchMetadata is ordered such that the batch with the lowest sequence is at the head of the queue while the
 // batch with the highest sequence is at the tail of the queue. We will retain at most ProducerStateEntry.NumBatchesToRetain
 // elements in the queue. When the queue is at capacity, we remove the first element to make space for the incoming batch.
-private[log] class ProducerStateEntry(val producerId: Long,
-                                      val batchMetadata: mutable.Queue[BatchMetadata],
-                                      var producerEpoch: Short,
-                                      var coordinatorEpoch: Int,
-                                      var currentTxnFirstOffset: Option[Long]) {
+private[log] class ProducerStateEntry(
+  val producerId: Long,
+  val batchMetadata: mutable.Queue[BatchMetadata],
+  var producerEpoch: Short,
+  var coordinatorEpoch: Int,
+  var currentTxnFirstOffset: Option[Long]) {
 
   def firstSeq: Int = if (isEmpty) RecordBatch.NO_SEQUENCE else batchMetadata.front.firstSeq
 
@@ -108,7 +125,7 @@ private[log] class ProducerStateEntry(val producerId: Long,
 
   def lastTimestamp = if (isEmpty) RecordBatch.NO_TIMESTAMP else batchMetadata.last.timestamp
 
-  def lastOffsetDelta : Int = if (isEmpty) 0 else batchMetadata.last.offsetDelta
+  def lastOffsetDelta: Int = if (isEmpty) 0 else batchMetadata.last.offsetDelta
 
   def isEmpty: Boolean = batchMetadata.isEmpty
 
@@ -145,7 +162,7 @@ private[log] class ProducerStateEntry(val producerId: Long,
 
   def findDuplicateBatch(batch: RecordBatch): Option[BatchMetadata] = {
     if (batch.producerEpoch != producerEpoch)
-       None
+      None
     else
       batchWithSequenceRange(batch.baseSequence, batch.lastSequence)
   }
@@ -184,9 +201,10 @@ private[log] class ProducerStateEntry(val producerId: Long,
  *                       should have ValidationType.None. Appends coming from a client for produce requests should have
  *                       ValidationType.Full.
  */
-private[log] class ProducerAppendInfo(val producerId: Long,
-                                      val currentEntry: ProducerStateEntry,
-                                      val validationType: ValidationType) {
+private[log] class ProducerAppendInfo(
+  val producerId: Long,
+  val currentEntry: ProducerStateEntry,
+  val validationType: ValidationType) {
   private val transactions = ListBuffer.empty[TxnMetadata]
   private val updatedEntry = ProducerStateEntry.empty(producerId)
 
@@ -261,12 +279,13 @@ private[log] class ProducerAppendInfo(val producerId: Long,
     }
   }
 
-  def append(epoch: Short,
-             firstSeq: Int,
-             lastSeq: Int,
-             lastTimestamp: Long,
-             lastOffset: Long,
-             isTransactional: Boolean): Unit = {
+  def append(
+    epoch: Short,
+    firstSeq: Int,
+    lastSeq: Int,
+    lastTimestamp: Long,
+    lastOffset: Long,
+    isTransactional: Boolean): Unit = {
     maybeValidateAppend(epoch, firstSeq)
     updatedEntry.addBatch(epoch, lastSeq, lastOffset, lastSeq - firstSeq, lastTimestamp)
 
@@ -285,10 +304,11 @@ private[log] class ProducerAppendInfo(val producerId: Long,
     }
   }
 
-  def appendEndTxnMarker(endTxnMarker: EndTransactionMarker,
-                         producerEpoch: Short,
-                         offset: Long,
-                         timestamp: Long): CompletedTxn = {
+  def appendEndTxnMarker(
+    endTxnMarker: EndTransactionMarker,
+    producerEpoch: Short,
+    offset: Long,
+    timestamp: Long): CompletedTxn = {
     checkProducerEpoch(producerEpoch)
 
     if (updatedEntry.coordinatorEpoch > endTxnMarker.coordinatorEpoch)
@@ -379,7 +399,7 @@ object ProducerStateManager {
         throw new CorruptSnapshotException(s"Snapshot contained an unknown file version $version")
 
       val crc = struct.getUnsignedInt(CrcField)
-      val computedCrc =  Crc32C.compute(buffer, ProducerEntriesOffset, buffer.length - ProducerEntriesOffset)
+      val computedCrc = Crc32C.compute(buffer, ProducerEntriesOffset, buffer.length - ProducerEntriesOffset)
       if (crc != computedCrc)
         throw new CorruptSnapshotException(s"Snapshot is corrupt (CRC is no longer valid). " +
           s"Stored crc: $crc. Computed crc: $computedCrc")
@@ -478,9 +498,10 @@ object ProducerStateManager {
  * been deleted.
  */
 @nonthreadsafe
-class ProducerStateManager(val topicPartition: TopicPartition,
-                           @volatile var logDir: File,
-                           val maxProducerIdExpirationMs: Int = 60 * 60 * 1000) extends Logging {
+class ProducerStateManager(
+  val topicPartition: TopicPartition,
+  @volatile var logDir: File,
+  val maxProducerIdExpirationMs: Int = 60 * 60 * 1000) extends Logging {
   import ProducerStateManager._
   import java.util
 
@@ -582,8 +603,9 @@ class ProducerStateManager(val topicPartition: TopicPartition,
    * Expire any producer ids which have been idle longer than the configured maximum expiration timeout.
    */
   def removeExpiredProducers(currentTimeMs: Long) {
-    producers.retain { case (producerId, lastEntry) =>
-      !isProducerExpired(currentTimeMs, lastEntry)
+    producers.retain {
+      case (producerId, lastEntry) =>
+        !isProducerExpired(currentTimeMs, lastEntry)
     }
   }
 
@@ -696,8 +718,9 @@ class ProducerStateManager(val topicPartition: TopicPartition,
    * the snapshot.
    */
   def truncateHead(logStartOffset: Long) {
-    val evictedProducerEntries = producers.filter { case (_, producerState) =>
-      !isProducerRetained(producerState, logStartOffset)
+    val evictedProducerEntries = producers.filter {
+      case (_, producerState) =>
+        !isProducerRetained(producerState, logStartOffset)
     }
     val evictedProducerIds = evictedProducerEntries.keySet
 

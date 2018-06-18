@@ -36,7 +36,7 @@ object BrokerEndPoint {
       case _ => None
     }
   }
-  
+
   /**
    * BrokerEndPoint URI is host:port or [ipv6_host]:port
    * Note that unlike EndPoint (or listener) this URI has no security information.
@@ -74,6 +74,6 @@ case class BrokerEndPoint(id: Int, host: String, port: Int) {
 
   def sizeInBytes: Int =
     4 + /* broker Id */
-    4 + /* port */
-    shortStringLength(host)
+      4 + /* port */
+      shortStringLength(host)
 }

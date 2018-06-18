@@ -51,12 +51,13 @@ object OffsetFetchRequest extends Logging {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class OffsetFetchRequest(groupId: String,
-                              requestInfo: Seq[TopicAndPartition],
-                              versionId: Short = OffsetFetchRequest.CurrentVersion,
-                              correlationId: Int = 0,
-                              clientId: String = OffsetFetchRequest.DefaultClientId)
-    extends RequestOrResponse(Some(ApiKeys.OFFSET_FETCH.id)) {
+case class OffsetFetchRequest(
+  groupId: String,
+  requestInfo: Seq[TopicAndPartition],
+  versionId: Short = OffsetFetchRequest.CurrentVersion,
+  correlationId: Int = 0,
+  clientId: String = OffsetFetchRequest.DefaultClientId)
+  extends RequestOrResponse(Some(ApiKeys.OFFSET_FETCH.id)) {
 
   lazy val requestInfoGroupedByTopic = requestInfo.groupBy(_.topic)
 
@@ -67,12 +68,12 @@ case class OffsetFetchRequest(groupId: String,
     writeShortString(buffer, clientId)
 
     // Write OffsetFetchRequest
-    writeShortString(buffer, groupId)             // consumer group
+    writeShortString(buffer, groupId) // consumer group
     buffer.putInt(requestInfoGroupedByTopic.size) // number of topics
-    requestInfoGroupedByTopic.foreach( t1 => { // (topic, Seq[TopicAndPartition])
+    requestInfoGroupedByTopic.foreach(t1 => { // (topic, Seq[TopicAndPartition])
       writeShortString(buffer, t1._1) // topic
-      buffer.putInt(t1._2.size)       // number of partitions for this topic
-      t1._2.foreach( t2 => {
+      buffer.putInt(t1._2.size) // number of partitions for this topic
+      t1._2.foreach(t2 => {
         buffer.putInt(t2.partition)
       })
     })
@@ -80,15 +81,15 @@ case class OffsetFetchRequest(groupId: String,
 
   override def sizeInBytes =
     2 + /* versionId */
-    4 + /* correlationId */
-    shortStringLength(clientId) +
-    shortStringLength(groupId) +
-    4 + /* topic count */
-    requestInfoGroupedByTopic.foldLeft(0)((count, t) => {
-      count + shortStringLength(t._1) + /* topic */
-      4 + /* number of partitions */
-      t._2.size * 4 /* partition */
-    })
+      4 + /* correlationId */
+      shortStringLength(clientId) +
+      shortStringLength(groupId) +
+      4 + /* topic count */
+      requestInfoGroupedByTopic.foldLeft(0)((count, t) => {
+        count + shortStringLength(t._1) + /* topic */
+          4 + /* number of partitions */
+          t._2.size * 4 /* partition */
+      })
 
   override def describe(details: Boolean): String = {
     val offsetFetchRequest = new StringBuilder

@@ -13,23 +13,24 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.cluster
 
 import kafka.log.Log
 import kafka.utils.Logging
-import kafka.server.{LogOffsetMetadata, LogReadResult}
+import kafka.server.{ LogOffsetMetadata, LogReadResult }
 import kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.OffsetOutOfRangeException
 import org.apache.kafka.common.utils.Time
 
-class Replica(val brokerId: Int,
-              val topicPartition: TopicPartition,
-              time: Time = Time.SYSTEM,
-              initialHighWatermarkValue: Long = 0L,
-              @volatile var log: Option[Log] = None) extends Logging {
+class Replica(
+  val brokerId: Int,
+  val topicPartition: TopicPartition,
+  time: Time = Time.SYSTEM,
+  initialHighWatermarkValue: Long = 0L,
+  @volatile var log: Option[Log] = None) extends Logging {
   // the high watermark offset value, in non-leader replicas only its message offsets are kept
   @volatile private[this] var highWatermarkMetadata = new LogOffsetMetadata(initialHighWatermarkValue)
   // the log end offset value, kept in all replicas;
@@ -123,7 +124,7 @@ class Replica(val brokerId: Int,
   private def logStartOffset_=(newLogStartOffset: Long) {
     if (isLocal) {
       throw new KafkaException(s"Should not set log start offset on partition $topicPartition's local replica $brokerId " +
-                               s"without attempting to delete records of the log")
+        s"without attempting to delete records of the log")
     } else {
       _logStartOffset = newLogStartOffset
       trace(s"Setting log start offset for remote replica $brokerId for partition $topicPartition to [$newLogStartOffset]")

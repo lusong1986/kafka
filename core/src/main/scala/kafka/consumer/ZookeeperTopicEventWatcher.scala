@@ -18,13 +18,14 @@
 package kafka.consumer
 
 import scala.collection.JavaConverters._
-import kafka.utils.{ZkUtils, Logging}
-import org.I0Itec.zkclient.{IZkStateListener, IZkChildListener}
+import kafka.utils.{ ZkUtils, Logging }
+import org.I0Itec.zkclient.{ IZkStateListener, IZkChildListener }
 import org.apache.zookeeper.Watcher.Event.KeeperState
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
-class ZookeeperTopicEventWatcher(val zkUtils: ZkUtils,
-    val eventHandler: TopicEventHandler[String]) extends Logging {
+class ZookeeperTopicEventWatcher(
+  val zkUtils: ZkUtils,
+  val eventHandler: TopicEventHandler[String]) extends Logging {
 
   val lock = new Object()
 
@@ -51,8 +52,7 @@ class ZookeeperTopicEventWatcher(val zkUtils: ZkUtils,
       info("Shutting down topic event watcher.")
       if (zkUtils != null) {
         stopWatchingTopicEvents()
-      }
-      else {
+      } else {
         warn("Cannot shutdown since the embedded zookeeper client has already closed.")
       }
     }
@@ -69,8 +69,7 @@ class ZookeeperTopicEventWatcher(val zkUtils: ZkUtils,
             debug("all topics: %s".format(latestTopics))
             eventHandler.handleTopicEvent(latestTopics)
           }
-        }
-        catch {
+        } catch {
           case e: Throwable =>
             error("error in handling child changes", e)
         }
@@ -83,7 +82,7 @@ class ZookeeperTopicEventWatcher(val zkUtils: ZkUtils,
     extends IZkStateListener {
 
     @throws[Exception]
-    def handleStateChanged(state: KeeperState) { }
+    def handleStateChanged(state: KeeperState) {}
 
     @throws[Exception]
     def handleNewSession() {

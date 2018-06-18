@@ -20,7 +20,7 @@ import kafka.utils.Logging
 import kafka.zk.KafkaZkClient
 import org.apache.kafka.common.TopicPartition
 
-import scala.collection.{Set, mutable}
+import scala.collection.{ Set, mutable }
 
 /**
  * This manages the state machine for topic deletion.
@@ -28,8 +28,8 @@ import scala.collection.{Set, mutable}
  * 2. The controller listens for child changes on /admin/delete_topic and starts topic deletion for the respective topics
  * 3. The controller's ControllerEventThread handles topic deletion. A topic will be ineligible
  *    for deletion in the following scenarios -
-  *   3.1 broker hosting one of the replicas for that topic goes down
-  *   3.2 partition reassignment for partitions of that topic is in progress
+ *   3.1 broker hosting one of the replicas for that topic goes down
+ *   3.2 partition reassignment for partitions of that topic is in progress
  * 4. Topic deletion is resumed when -
  *    4.1 broker hosting one of the replicas for that topic is started
  *    4.2 partition reassignment for partitions of that topic completes
@@ -55,9 +55,10 @@ import scala.collection.{Set, mutable}
  *    it marks the topic for deletion retry.
  * @param controller
  */
-class TopicDeletionManager(controller: KafkaController,
-                           eventManager: ControllerEventManager,
-                           zkClient: KafkaZkClient) extends Logging {
+class TopicDeletionManager(
+  controller: KafkaController,
+  eventManager: ControllerEventManager,
+  zkClient: KafkaZkClient) extends Logging {
   this.logIdent = s"[Topic Deletion Manager ${controller.config.brokerId}], "
   val controllerContext = controller.controllerContext
   val isDeleteTopicEnabled = controller.config.deleteTopicEnable
@@ -215,7 +216,7 @@ class TopicDeletionManager(controller: KafkaController,
   /**
    * If the topic is queued for deletion but deletion is not currently under progress, then deletion is retried for that topic
    * To ensure a successful retry, reset states for respective replicas from ReplicaDeletionIneligible to OfflineReplica state
-   *@param topic Topic for which deletion should be retried
+   * @param topic Topic for which deletion should be retried
    */
   private def markTopicForDeletionRetry(topic: String) {
     // reset replica states from ReplicaDeletionIneligible to OfflineReplica
@@ -275,7 +276,7 @@ class TopicDeletionManager(controller: KafkaController,
    * 1. Move all dead replicas directly to ReplicaDeletionIneligible state. Also mark the respective topics ineligible
    *    for deletion if some replicas are dead since it won't complete successfully anyway
    * 2. Move all alive replicas to ReplicaDeletionStarted state so they can be deleted successfully
-   *@param replicasForTopicsToBeDeleted
+   * @param replicasForTopicsToBeDeleted
    */
   private def startReplicaDeletion(replicasForTopicsToBeDeleted: Set[PartitionAndReplica]) {
     replicasForTopicsToBeDeleted.groupBy(_.topic).keys.foreach { topic =>

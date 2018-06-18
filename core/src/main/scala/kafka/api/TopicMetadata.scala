@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.api
 
@@ -32,7 +32,7 @@ object TopicMetadata {
     val topic = readShortString(buffer)
     val numPartitions = readIntInRange(buffer, "number of partitions", (0, Int.MaxValue))
     val partitionsMetadata: Array[PartitionMetadata] = new Array[PartitionMetadata](numPartitions)
-    for(i <- 0 until numPartitions) {
+    for (i <- 0 until numPartitions) {
       val partitionMetadata = PartitionMetadata.readFrom(buffer, brokers)
       partitionsMetadata(i) = partitionMetadata
     }
@@ -43,8 +43,8 @@ object TopicMetadata {
 case class TopicMetadata(topic: String, partitionsMetadata: Seq[PartitionMetadata], error: Errors = Errors.NONE) extends Logging {
   def sizeInBytes: Int = {
     2 /* error code */ +
-    shortStringLength(topic) +
-    4 + partitionsMetadata.map(_.sizeInBytes).sum /* size and partition data array */
+      shortStringLength(topic) +
+      4 + partitionsMetadata.map(_.sizeInBytes).sum /* size and partition data array */
   }
 
   def writeTo(buffer: ByteBuffer) {
@@ -65,20 +65,24 @@ case class TopicMetadata(topic: String, partitionsMetadata: Seq[PartitionMetadat
         partitionsMetadata.foreach { partitionMetadata =>
           partitionMetadata.error match {
             case Errors.NONE =>
-              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is %s".format(topic,
+              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is %s".format(
+                topic,
                 partitionMetadata.partitionId, partitionMetadata.toString()))
             case Errors.REPLICA_NOT_AVAILABLE =>
               // this error message means some replica other than the leader is not available. The consumer
               // doesn't care about non leader replicas, so ignore this
-              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is %s".format(topic,
+              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is %s".format(
+                topic,
                 partitionMetadata.partitionId, partitionMetadata.toString()))
             case error: Errors =>
-              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is not available due to %s".format(topic,
+              topicMetadataInfo.append("\nMetadata for partition [%s,%d] is not available due to %s".format(
+                topic,
                 partitionMetadata.partitionId, error.exceptionName))
           }
         }
       case error: Errors =>
-        topicMetadataInfo.append("\nNo partition metadata for topic %s due to %s".format(topic,
+        topicMetadataInfo.append("\nNo partition metadata for topic %s due to %s".format(
+          topic,
           error.exceptionName))
     }
     topicMetadataInfo.append("}")
@@ -108,17 +112,18 @@ object PartitionMetadata {
   }
 }
 
-case class PartitionMetadata(partitionId: Int,
-                             leader: Option[BrokerEndPoint],
-                             replicas: Seq[BrokerEndPoint],
-                             isr: Seq[BrokerEndPoint] = Seq.empty,
-                             error: Errors = Errors.NONE) extends Logging {
+case class PartitionMetadata(
+  partitionId: Int,
+  leader: Option[BrokerEndPoint],
+  replicas: Seq[BrokerEndPoint],
+  isr: Seq[BrokerEndPoint] = Seq.empty,
+  error: Errors = Errors.NONE) extends Logging {
   def sizeInBytes: Int = {
     2 /* error code */ +
-    4 /* partition id */ +
-    4 /* leader */ +
-    4 + 4 * replicas.size /* replica array */ +
-    4 + 4 * isr.size /* isr array */
+      4 /* partition id */ +
+      4 /* leader */ +
+      4 + 4 * replicas.size /* replica array */ +
+      4 + 4 * isr.size /* isr array */
   }
 
   def writeTo(buffer: ByteBuffer) {
@@ -149,5 +154,4 @@ case class PartitionMetadata(partitionId: Int,
   }
 
 }
-
 

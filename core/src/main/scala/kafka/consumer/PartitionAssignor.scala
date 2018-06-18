@@ -18,12 +18,12 @@
 package kafka.consumer
 
 import kafka.common.TopicAndPartition
-import kafka.utils.{Pool, CoreUtils, ZkUtils, Logging}
+import kafka.utils.{ Pool, CoreUtils, ZkUtils, Logging }
 
 import scala.collection.mutable
 
 @deprecated("This trait has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.internals.PartitionAssignor instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.internals.PartitionAssignor instead.", "0.11.0.0")
 trait PartitionAssignor {
 
   /**
@@ -36,7 +36,7 @@ trait PartitionAssignor {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.internals.PartitionAssignor instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.internals.PartitionAssignor instead.", "0.11.0.0")
 object PartitionAssignor {
   def createInstance(assignmentStrategy: String) = assignmentStrategy match {
     case "roundrobin" => new RoundRobinAssignor()
@@ -68,7 +68,7 @@ class AssignmentContext(group: String, val consumerId: String, excludeInternalTo
  * will be within a delta of exactly one across all consumer threads.)
  */
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.RoundRobinAssignor instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.RoundRobinAssignor instead.", "0.11.0.0")
 class RoundRobinAssignor() extends PartitionAssignor with Logging {
 
   def assign(ctx: AssignmentContext) = {
@@ -79,19 +79,21 @@ class RoundRobinAssignor() extends PartitionAssignor with Logging {
 
     if (ctx.consumersForTopic.nonEmpty) {
       // Collect consumer thread ids across all topics, remove duplicates, and sort to ensure determinism
-      val allThreadIds = ctx.consumersForTopic.flatMap { case (topic, threadIds) =>
-         threadIds
+      val allThreadIds = ctx.consumersForTopic.flatMap {
+        case (topic, threadIds) =>
+          threadIds
       }.toSet.toSeq.sorted
 
       val threadAssignor = CoreUtils.circularIterator(allThreadIds)
 
       info("Starting round-robin assignment with consumers " + ctx.consumers)
-      val allTopicPartitions = ctx.partitionsForTopic.flatMap { case (topic, partitions) =>
-        info("Consumer %s rebalancing the following partitions for topic %s: %s"
-          .format(ctx.consumerId, topic, partitions))
-        partitions.map(partition => {
-          TopicAndPartition(topic, partition)
-        })
+      val allTopicPartitions = ctx.partitionsForTopic.flatMap {
+        case (topic, partitions) =>
+          info("Consumer %s rebalancing the following partitions for topic %s: %s"
+            .format(ctx.consumerId, topic, partitions))
+          partitions.map(partition => {
+            TopicAndPartition(topic, partition)
+          })
       }.toSeq.sortWith((topicPartition1, topicPartition2) => {
         /*
          * Randomize the order by taking the hashcode to reduce the likelihood of all partitions of a given topic ending
@@ -124,7 +126,7 @@ class RoundRobinAssignor() extends PartitionAssignor with Logging {
  * p0 -> C1-0, p1 -> C1-0, p2 -> C1-1, p3 -> C2-0, p4 -> C2-1
  */
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.RangeAssignor instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.RangeAssignor instead.", "0.11.0.0")
 class RangeAssignor() extends PartitionAssignor with Logging {
 
   def assign(ctx: AssignmentContext) = {

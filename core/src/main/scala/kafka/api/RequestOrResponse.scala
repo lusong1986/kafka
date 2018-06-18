@@ -30,7 +30,6 @@ object Request {
   def isValidBrokerId(brokerId: Int): Boolean = brokerId >= 0
 }
 
-
 abstract class RequestOrResponse(val requestId: Option[Short] = None) extends Logging {
 
   def sizeInBytes: Int

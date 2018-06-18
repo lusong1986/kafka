@@ -28,11 +28,11 @@ import kafka.zk.KafkaZkClient
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.internals.Topic
 import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.common.record.RecordBatch.{NO_PRODUCER_EPOCH, NO_PRODUCER_ID}
+import org.apache.kafka.common.record.RecordBatch.{ NO_PRODUCER_EPOCH, NO_PRODUCER_ID }
 import org.apache.kafka.common.requests._
 import org.apache.kafka.common.utils.Time
 
-import scala.collection.{Map, Seq, immutable}
+import scala.collection.{ Map, Seq, immutable }
 import scala.math.max
 
 /**
@@ -47,13 +47,14 @@ import scala.math.max
  * used by its callback.  The delayed callback may acquire the group lock
  * since the delayed operation is completed only if the group lock can be acquired.
  */
-class GroupCoordinator(val brokerId: Int,
-                       val groupConfig: GroupConfig,
-                       val offsetConfig: OffsetConfig,
-                       val groupManager: GroupMetadataManager,
-                       val heartbeatPurgatory: DelayedOperationPurgatory[DelayedHeartbeat],
-                       val joinPurgatory: DelayedOperationPurgatory[DelayedJoin],
-                       time: Time) extends Logging {
+class GroupCoordinator(
+  val brokerId: Int,
+  val groupConfig: GroupConfig,
+  val offsetConfig: OffsetConfig,
+  val groupManager: GroupMetadataManager,
+  val heartbeatPurgatory: DelayedOperationPurgatory[DelayedHeartbeat],
+  val joinPurgatory: DelayedOperationPurgatory[DelayedJoin],
+  time: Time) extends Logging {
   import GroupCoordinator._
 
   type JoinCallback = JoinGroupResult => Unit
@@ -100,15 +101,16 @@ class GroupCoordinator(val brokerId: Int,
     info("Shutdown complete.")
   }
 
-  def handleJoinGroup(groupId: String,
-                      memberId: String,
-                      clientId: String,
-                      clientHost: String,
-                      rebalanceTimeoutMs: Int,
-                      sessionTimeoutMs: Int,
-                      protocolType: String,
-                      protocols: List[(String, Array[Byte])],
-                      responseCallback: JoinCallback) {
+  def handleJoinGroup(
+    groupId: String,
+    memberId: String,
+    clientId: String,
+    clientHost: String,
+    rebalanceTimeoutMs: Int,
+    sessionTimeoutMs: Int,
+    protocolType: String,
+    protocols: List[(String, Array[Byte])],
+    responseCallback: JoinCallback) {
     if (!isActive.get) {
       responseCallback(joinError(memberId, Errors.COORDINATOR_NOT_AVAILABLE))
     } else if (!validGroupId(groupId)) {
@@ -118,7 +120,7 @@ class GroupCoordinator(val brokerId: Int,
     } else if (isCoordinatorLoadInProgress(groupId)) {
       responseCallback(joinError(memberId, Errors.COORDINATOR_LOAD_IN_PROGRESS))
     } else if (sessionTimeoutMs < groupConfig.groupMinSessionTimeoutMs ||
-               sessionTimeoutMs > groupConfig.groupMaxSessionTimeoutMs) {
+      sessionTimeoutMs > groupConfig.groupMaxSessionTimeoutMs) {
       responseCallback(joinError(memberId, Errors.INVALID_SESSION_TIMEOUT))
     } else {
       // only try to create the group if the group is not unknown AND
@@ -139,15 +141,16 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  private def doJoinGroup(group: GroupMetadata,
-                          memberId: String,
-                          clientId: String,
-                          clientHost: String,
-                          rebalanceTimeoutMs: Int,
-                          sessionTimeoutMs: Int,
-                          protocolType: String,
-                          protocols: List[(String, Array[Byte])],
-                          responseCallback: JoinCallback) {
+  private def doJoinGroup(
+    group: GroupMetadata,
+    memberId: String,
+    clientId: String,
+    clientHost: String,
+    rebalanceTimeoutMs: Int,
+    sessionTimeoutMs: Int,
+    protocolType: String,
+    protocols: List[(String, Array[Byte])],
+    responseCallback: JoinCallback) {
     group.inLock {
       if (!group.is(Empty) && (!group.protocolType.contains(protocolType) || !group.supportsProtocols(protocols.map(_._1).toSet))) {
         // if the new member does not support the group protocol, reject it
@@ -232,11 +235,12 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleSyncGroup(groupId: String,
-                      generation: Int,
-                      memberId: String,
-                      groupAssignment: Map[String, Array[Byte]],
-                      responseCallback: SyncCallback) {
+  def handleSyncGroup(
+    groupId: String,
+    generation: Int,
+    memberId: String,
+    groupAssignment: Map[String, Array[Byte]],
+    responseCallback: SyncCallback) {
     if (!isActive.get) {
       responseCallback(Array.empty, Errors.COORDINATOR_NOT_AVAILABLE)
     } else if (!isCoordinatorForGroup(groupId)) {
@@ -249,11 +253,12 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  private def doSyncGroup(group: GroupMetadata,
-                          generationId: Int,
-                          memberId: String,
-                          groupAssignment: Map[String, Array[Byte]],
-                          responseCallback: SyncCallback) {
+  private def doSyncGroup(
+    group: GroupMetadata,
+    generationId: Int,
+    memberId: String,
+    groupAssignment: Map[String, Array[Byte]],
+    responseCallback: SyncCallback) {
     group.inLock {
       if (!group.has(memberId)) {
         responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
@@ -384,10 +389,11 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleHeartbeat(groupId: String,
-                      memberId: String,
-                      generationId: Int,
-                      responseCallback: Errors => Unit) {
+  def handleHeartbeat(
+    groupId: String,
+    memberId: String,
+    generationId: Int,
+    responseCallback: Errors => Unit) {
     if (!isActive.get) {
       responseCallback(Errors.COORDINATOR_NOT_AVAILABLE)
     } else if (!isCoordinatorForGroup(groupId)) {
@@ -446,11 +452,12 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleTxnCommitOffsets(groupId: String,
-                             producerId: Long,
-                             producerEpoch: Short,
-                             offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
-                             responseCallback: immutable.Map[TopicPartition, Errors] => Unit): Unit = {
+  def handleTxnCommitOffsets(
+    groupId: String,
+    producerId: Long,
+    producerEpoch: Short,
+    offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
+    responseCallback: immutable.Map[TopicPartition, Errors] => Unit): Unit = {
     validateGroup(groupId) match {
       case Some(error) => responseCallback(offsetMetadata.mapValues(_ => error))
       case None =>
@@ -461,11 +468,12 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleCommitOffsets(groupId: String,
-                          memberId: String,
-                          generationId: Int,
-                          offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
-                          responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
+  def handleCommitOffsets(
+    groupId: String,
+    memberId: String,
+    generationId: Int,
+    offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
+    responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
     validateGroup(groupId) match {
       case Some(error) => responseCallback(offsetMetadata.mapValues(_ => error))
       case None =>
@@ -488,21 +496,23 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleTxnCompletion(producerId: Long,
-                          offsetsPartitions: Iterable[TopicPartition],
-                          transactionResult: TransactionResult) {
+  def handleTxnCompletion(
+    producerId: Long,
+    offsetsPartitions: Iterable[TopicPartition],
+    transactionResult: TransactionResult) {
     require(offsetsPartitions.forall(_.topic == Topic.GROUP_METADATA_TOPIC_NAME))
     val isCommit = transactionResult == TransactionResult.COMMIT
     groupManager.handleTxnCompletion(producerId, offsetsPartitions.map(_.partition).toSet, isCommit)
   }
 
-  private def doCommitOffsets(group: GroupMetadata,
-                              memberId: String,
-                              generationId: Int,
-                              producerId: Long,
-                              producerEpoch: Short,
-                              offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
-                              responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
+  private def doCommitOffsets(
+    group: GroupMetadata,
+    memberId: String,
+    generationId: Int,
+    producerId: Long,
+    producerEpoch: Short,
+    offsetMetadata: immutable.Map[TopicPartition, OffsetAndMetadata],
+    responseCallback: immutable.Map[TopicPartition, Errors] => Unit) {
     group.inLock {
       if (group.is(Dead)) {
         responseCallback(offsetMetadata.mapValues(_ => Errors.UNKNOWN_MEMBER_ID))
@@ -524,8 +534,9 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  def handleFetchOffsets(groupId: String,
-                         partitions: Option[Seq[TopicPartition]] = None): (Errors, Map[TopicPartition, OffsetFetchResponse.PartitionData]) = {
+  def handleFetchOffsets(
+    groupId: String,
+    partitions: Option[Seq[TopicPartition]] = None): (Errors, Map[TopicPartition, OffsetFetchResponse.PartitionData]) = {
     if (!isActive.get)
       (Errors.COORDINATOR_NOT_AVAILABLE, Map())
     else if (!isCoordinatorForGroup(groupId)) {
@@ -689,14 +700,15 @@ class GroupCoordinator(val brokerId: Int,
     heartbeatPurgatory.checkAndComplete(memberKey)
   }
 
-  private def addMemberAndRebalance(rebalanceTimeoutMs: Int,
-                                    sessionTimeoutMs: Int,
-                                    clientId: String,
-                                    clientHost: String,
-                                    protocolType: String,
-                                    protocols: List[(String, Array[Byte])],
-                                    group: GroupMetadata,
-                                    callback: JoinCallback) = {
+  private def addMemberAndRebalance(
+    rebalanceTimeoutMs: Int,
+    sessionTimeoutMs: Int,
+    clientId: String,
+    clientHost: String,
+    protocolType: String,
+    protocols: List[(String, Array[Byte])],
+    group: GroupMetadata,
+    callback: JoinCallback) = {
     val memberId = clientId + "-" + group.generateMemberIdSuffix
     val member = new MemberMetadata(memberId, group.groupId, clientId, clientHost, rebalanceTimeoutMs,
       sessionTimeoutMs, protocolType, protocols)
@@ -710,10 +722,11 @@ class GroupCoordinator(val brokerId: Int,
     member
   }
 
-  private def updateMemberAndRebalance(group: GroupMetadata,
-                                       member: MemberMetadata,
-                                       protocols: List[(String, Array[Byte])],
-                                       callback: JoinCallback) {
+  private def updateMemberAndRebalance(
+    group: GroupMetadata,
+    member: MemberMetadata,
+    protocols: List[(String, Array[Byte])],
+    callback: JoinCallback) {
     member.supportedProtocols = protocols
     member.awaitingJoinCallback = callback
     maybePrepareRebalance(group)
@@ -732,7 +745,8 @@ class GroupCoordinator(val brokerId: Int,
       resetAndPropagateAssignmentError(group, Errors.REBALANCE_IN_PROGRESS)
 
     val delayedRebalance = if (group.is(Empty))
-      new InitialDelayedJoin(this,
+      new InitialDelayedJoin(
+        this,
         joinPurgatory,
         group,
         groupConfig.groupInitialRebalanceDelayMs,
@@ -866,10 +880,11 @@ object GroupCoordinator {
   val EmptyGroup = GroupSummary(NoState, NoProtocolType, NoProtocol, NoMembers)
   val DeadGroup = GroupSummary(Dead.toString, NoProtocolType, NoProtocol, NoMembers)
 
-  def apply(config: KafkaConfig,
-            zkClient: KafkaZkClient,
-            replicaManager: ReplicaManager,
-            time: Time): GroupCoordinator = {
+  def apply(
+    config: KafkaConfig,
+    zkClient: KafkaZkClient,
+    replicaManager: ReplicaManager,
+    time: Time): GroupCoordinator = {
     val heartbeatPurgatory = DelayedOperationPurgatory[DelayedHeartbeat]("Heartbeat", config.brokerId)
     val joinPurgatory = DelayedOperationPurgatory[DelayedJoin]("Rebalance", config.brokerId)
     apply(config, zkClient, replicaManager, heartbeatPurgatory, joinPurgatory, time)
@@ -885,17 +900,18 @@ object GroupCoordinator {
     offsetsTopicReplicationFactor = config.offsetsTopicReplicationFactor,
     offsetsTopicCompressionCodec = config.offsetsTopicCompressionCodec,
     offsetCommitTimeoutMs = config.offsetCommitTimeoutMs,
-    offsetCommitRequiredAcks = config.offsetCommitRequiredAcks
-  )
+    offsetCommitRequiredAcks = config.offsetCommitRequiredAcks)
 
-  def apply(config: KafkaConfig,
-            zkClient: KafkaZkClient,
-            replicaManager: ReplicaManager,
-            heartbeatPurgatory: DelayedOperationPurgatory[DelayedHeartbeat],
-            joinPurgatory: DelayedOperationPurgatory[DelayedJoin],
-            time: Time): GroupCoordinator = {
+  def apply(
+    config: KafkaConfig,
+    zkClient: KafkaZkClient,
+    replicaManager: ReplicaManager,
+    heartbeatPurgatory: DelayedOperationPurgatory[DelayedHeartbeat],
+    joinPurgatory: DelayedOperationPurgatory[DelayedJoin],
+    time: Time): GroupCoordinator = {
     val offsetConfig = this.offsetConfig(config)
-    val groupConfig = GroupConfig(groupMinSessionTimeoutMs = config.groupMinSessionTimeoutMs,
+    val groupConfig = GroupConfig(
+      groupMinSessionTimeoutMs = config.groupMinSessionTimeoutMs,
       groupMaxSessionTimeoutMs = config.groupMaxSessionTimeoutMs,
       groupInitialRebalanceDelayMs = config.groupInitialRebalanceDelay)
 
@@ -906,13 +922,15 @@ object GroupCoordinator {
 
 }
 
-case class GroupConfig(groupMinSessionTimeoutMs: Int,
-                       groupMaxSessionTimeoutMs: Int,
-                       groupInitialRebalanceDelayMs: Int)
+case class GroupConfig(
+  groupMinSessionTimeoutMs: Int,
+  groupMaxSessionTimeoutMs: Int,
+  groupInitialRebalanceDelayMs: Int)
 
-case class JoinGroupResult(members: Map[String, Array[Byte]],
-                           memberId: String,
-                           generationId: Int,
-                           subProtocol: String,
-                           leaderId: String,
-                           error: Errors)
+case class JoinGroupResult(
+  members: Map[String, Array[Byte]],
+  memberId: String,
+  generationId: Int,
+  subProtocol: String,
+  leaderId: String,
+  error: Errors)

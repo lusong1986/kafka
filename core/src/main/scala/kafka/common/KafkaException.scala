@@ -13,12 +13,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.common
 
 /**
  * Generic Kafka exception
-*/
+ */
 class KafkaException(message: String, t: Throwable) extends RuntimeException(message, t) {
   def this(message: String) = this(message, null)
   def this(t: Throwable) = this("", t)

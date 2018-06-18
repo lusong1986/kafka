@@ -44,7 +44,8 @@ object EndPoint {
     val protocolMap = securityProtocolMap.getOrElse(DefaultSecurityProtocolMap)
 
     def securityProtocol(listenerName: ListenerName): SecurityProtocol =
-      protocolMap.getOrElse(listenerName,
+      protocolMap.getOrElse(
+        listenerName,
         throw new IllegalArgumentException(s"No security protocol defined for listener ${listenerName.value}"))
 
     connectionString match {
@@ -66,7 +67,7 @@ case class EndPoint(host: String, port: Int, listenerName: ListenerName, securit
   def connectionString: String = {
     val hostport =
       if (host == null)
-        ":"+port
+        ":" + port
       else
         Utils.formatAddress(host, port)
     listenerName.value + "://" + hostport

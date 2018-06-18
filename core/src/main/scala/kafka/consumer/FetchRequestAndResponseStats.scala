@@ -19,8 +19,8 @@ package kafka.consumer
 
 import java.util.concurrent.TimeUnit
 
-import kafka.common.{ClientIdAllBrokers, ClientIdBroker, ClientIdAndBroker}
-import kafka.metrics.{KafkaMetricsGroup, KafkaTimer}
+import kafka.common.{ ClientIdAllBrokers, ClientIdBroker, ClientIdAndBroker }
+import kafka.metrics.{ KafkaMetricsGroup, KafkaTimer }
 import kafka.utils.Pool
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
@@ -28,7 +28,7 @@ class FetchRequestAndResponseMetrics(metricId: ClientIdBroker) extends KafkaMetr
   val tags = metricId match {
     case ClientIdAndBroker(clientId, brokerHost, brokerPort) =>
       Map("clientId" -> clientId, "brokerHost" -> brokerHost,
-      "brokerPort" -> brokerPort.toString)
+        "brokerPort" -> brokerPort.toString)
     case ClientIdAllBrokers(clientId) =>
       Map("clientId" -> clientId)
   }
@@ -78,5 +78,4 @@ object FetchRequestAndResponseStatsRegistry {
     }
   }
 }
-
 

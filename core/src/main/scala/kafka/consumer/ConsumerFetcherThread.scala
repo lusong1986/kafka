@@ -17,12 +17,12 @@
 
 package kafka.consumer
 
-import kafka.api.{FetchRequestBuilder, FetchResponsePartitionData, OffsetRequest, Request}
+import kafka.api.{ FetchRequestBuilder, FetchResponsePartitionData, OffsetRequest, Request }
 import kafka.cluster.BrokerEndPoint
 import kafka.message.ByteBufferMessageSet
-import kafka.server.{AbstractFetcherThread, PartitionFetchState}
+import kafka.server.{ AbstractFetcherThread, PartitionFetchState }
 import AbstractFetcherThread.ResultWithPartitions
-import kafka.common.{ErrorMapping, TopicAndPartition}
+import kafka.common.{ ErrorMapping, TopicAndPartition }
 
 import scala.collection.Map
 import ConsumerFetcherThread._
@@ -31,21 +31,22 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.record.MemoryRecords
 import org.apache.kafka.common.requests.EpochEndOffset
 
-
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.internals.Fetcher instead.", "0.11.0.0")
-class ConsumerFetcherThread(consumerIdString: String,
-                            fetcherId: Int,
-                            val config: ConsumerConfig,
-                            sourceBroker: BrokerEndPoint,
-                            partitionMap: Map[TopicPartition, PartitionTopicInfo],
-                            val consumerFetcherManager: ConsumerFetcherManager)
-        extends AbstractFetcherThread(name = s"ConsumerFetcherThread-$consumerIdString-$fetcherId-${sourceBroker.id}",
-                                      clientId = config.clientId,
-                                      sourceBroker = sourceBroker,
-                                      fetchBackOffMs = config.refreshLeaderBackoffMs,
-                                      isInterruptible = true,
-                                      includeLogTruncation = false) {
+  "Please use org.apache.kafka.clients.consumer.internals.Fetcher instead.", "0.11.0.0")
+class ConsumerFetcherThread(
+  consumerIdString: String,
+  fetcherId: Int,
+  val config: ConsumerConfig,
+  sourceBroker: BrokerEndPoint,
+  partitionMap: Map[TopicPartition, PartitionTopicInfo],
+  val consumerFetcherManager: ConsumerFetcherManager)
+  extends AbstractFetcherThread(
+    name = s"ConsumerFetcherThread-$consumerIdString-$fetcherId-${sourceBroker.id}",
+    clientId = config.clientId,
+    sourceBroker = sourceBroker,
+    fetchBackOffMs = config.refreshLeaderBackoffMs,
+    isInterruptible = true,
+    includeLogTruncation = false) {
 
   type REQ = FetchRequest
   type PD = PartitionData
@@ -83,7 +84,7 @@ class ConsumerFetcherThread(consumerIdString: String,
     val pti = partitionMap(topicPartition)
     if (pti.getFetchOffset != fetchOffset)
       throw new RuntimeException("Offset doesn't match for partition [%s,%d] pti offset: %d fetch offset: %d"
-                                .format(topicPartition.topic, topicPartition.partition, pti.getFetchOffset, fetchOffset))
+        .format(topicPartition.topic, topicPartition.partition, pti.getFetchOffset, fetchOffset))
     pti.enqueue(partitionData.underlying.messages.asInstanceOf[ByteBufferMessageSet])
   }
 
@@ -110,17 +111,19 @@ class ConsumerFetcherThread(consumerIdString: String,
   }
 
   protected def buildFetchRequest(partitionMap: collection.Seq[(TopicPartition, PartitionFetchState)]): ResultWithPartitions[FetchRequest] = {
-    partitionMap.foreach { case ((topicPartition, partitionFetchState)) =>
-      if (partitionFetchState.isReadyForFetch)
-        fetchRequestBuilder.addFetch(topicPartition.topic, topicPartition.partition, partitionFetchState.fetchOffset, fetchSize)
+    partitionMap.foreach {
+      case ((topicPartition, partitionFetchState)) =>
+        if (partitionFetchState.isReadyForFetch)
+          fetchRequestBuilder.addFetch(topicPartition.topic, topicPartition.partition, partitionFetchState.fetchOffset, fetchSize)
     }
 
     ResultWithPartitions(new FetchRequest(fetchRequestBuilder.build()), Set())
   }
 
   protected def fetch(fetchRequest: FetchRequest): Seq[(TopicPartition, PartitionData)] =
-    simpleConsumer.fetch(fetchRequest.underlying).data.map { case (TopicAndPartition(t, p), value) =>
-      new TopicPartition(t, p) -> new PartitionData(value)
+    simpleConsumer.fetch(fetchRequest.underlying).data.map {
+      case (TopicAndPartition(t, p), value) =>
+        new TopicPartition(t, p) -> new PartitionData(value)
     }
 
   override def buildLeaderEpochRequest(allPartitions: Seq[(TopicPartition, PartitionFetchState)]): ResultWithPartitions[Map[TopicPartition, Int]] = {
@@ -135,12 +138,13 @@ class ConsumerFetcherThread(consumerIdString: String,
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.internals.Fetcher instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.internals.Fetcher instead.", "0.11.0.0")
 object ConsumerFetcherThread {
 
   class FetchRequest(val underlying: kafka.api.FetchRequest) extends AbstractFetcherThread.FetchRequest {
-    private lazy val tpToOffset: Map[TopicPartition, Long] = underlying.requestInfo.map { case (tp, fetchInfo) =>
-      new TopicPartition(tp.topic, tp.partition) -> fetchInfo.offset
+    private lazy val tpToOffset: Map[TopicPartition, Long] = underlying.requestInfo.map {
+      case (tp, fetchInfo) =>
+        new TopicPartition(tp.topic, tp.partition) -> fetchInfo.offset
     }.toMap
     def isEmpty: Boolean = underlying.requestInfo.isEmpty
     def offset(topicPartition: TopicPartition): Long = tpToOffset(topicPartition)

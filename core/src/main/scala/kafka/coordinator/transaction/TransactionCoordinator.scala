@@ -19,8 +19,8 @@ package kafka.coordinator.transaction
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 
-import kafka.server.{DelayedOperationPurgatory, KafkaConfig, MetadataCache, ReplicaManager}
-import kafka.utils.{Logging, Scheduler}
+import kafka.server.{ DelayedOperationPurgatory, KafkaConfig, MetadataCache, ReplicaManager }
+import kafka.utils.{ Logging, Scheduler }
 import kafka.zk.KafkaZkClient
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.internals.Topic
@@ -28,19 +28,21 @@ import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.requests.TransactionResult
-import org.apache.kafka.common.utils.{LogContext, Time}
+import org.apache.kafka.common.utils.{ LogContext, Time }
 
 object TransactionCoordinator {
 
-  def apply(config: KafkaConfig,
-            replicaManager: ReplicaManager,
-            scheduler: Scheduler,
-            zkClient: KafkaZkClient,
-            metrics: Metrics,
-            metadataCache: MetadataCache,
-            time: Time): TransactionCoordinator = {
+  def apply(
+    config: KafkaConfig,
+    replicaManager: ReplicaManager,
+    scheduler: Scheduler,
+    zkClient: KafkaZkClient,
+    metrics: Metrics,
+    metadataCache: MetadataCache,
+    time: Time): TransactionCoordinator = {
 
-    val txnConfig = TransactionConfig(config.transactionalIdExpirationMs,
+    val txnConfig = TransactionConfig(
+      config.transactionalIdExpirationMs,
       config.transactionMaxTimeoutMs,
       config.transactionTopicPartitions,
       config.transactionTopicReplicationFactor,
@@ -82,14 +84,15 @@ object TransactionCoordinator {
  * producers. Producers with specific transactional ids are assigned to their corresponding coordinators;
  * Producers with no specific transactional id may talk to a random broker as their coordinators.
  */
-class TransactionCoordinator(brokerId: Int,
-                             txnConfig: TransactionConfig,
-                             scheduler: Scheduler,
-                             producerIdManager: ProducerIdManager,
-                             txnManager: TransactionStateManager,
-                             txnMarkerChannelManager: TransactionMarkerChannelManager,
-                             time: Time,
-                             logContext: LogContext) extends Logging {
+class TransactionCoordinator(
+  brokerId: Int,
+  txnConfig: TransactionConfig,
+  scheduler: Scheduler,
+  producerIdManager: ProducerIdManager,
+  txnManager: TransactionStateManager,
+  txnMarkerChannelManager: TransactionMarkerChannelManager,
+  time: Time,
+  logContext: LogContext) extends Logging {
   this.logIdent = logContext.logPrefix
 
   import TransactionCoordinator._
@@ -102,9 +105,10 @@ class TransactionCoordinator(brokerId: Int,
   /* Active flag of the coordinator */
   private val isActive = new AtomicBoolean(false)
 
-  def handleInitProducerId(transactionalId: String,
-                           transactionTimeoutMs: Int,
-                           responseCallback: InitProducerIdCallback): Unit = {
+  def handleInitProducerId(
+    transactionalId: String,
+    transactionTimeoutMs: Int,
+    responseCallback: InitProducerIdCallback): Unit = {
 
     if (transactionalId == null) {
       // if the transactional id is null, then always blindly accept the request
@@ -122,7 +126,8 @@ class TransactionCoordinator(brokerId: Int,
       val coordinatorEpochAndMetadata = txnManager.getTransactionState(transactionalId).right.flatMap {
         case None =>
           val producerId = producerIdManager.generateProducerId()
-          val createdMetadata = new TransactionMetadata(transactionalId = transactionalId,
+          val createdMetadata = new TransactionMetadata(
+            transactionalId = transactionalId,
             producerId = producerId,
             producerEpoch = RecordBatch.NO_PRODUCER_EPOCH,
             txnTimeoutMs = transactionTimeoutMs,
@@ -159,7 +164,8 @@ class TransactionCoordinator(brokerId: Int,
               }
             }
 
-            handleEndTransaction(transactionalId,
+            handleEndTransaction(
+              transactionalId,
               newMetadata.producerId,
               newMetadata.producerEpoch,
               TransactionResult.ABORT,
@@ -183,10 +189,11 @@ class TransactionCoordinator(brokerId: Int,
     }
   }
 
-  private def prepareInitProduceIdTransit(transactionalId: String,
-                                          transactionTimeoutMs: Int,
-                                          coordinatorEpoch: Int,
-                                          txnMetadata: TransactionMetadata): ApiResult[(Int, TxnTransitMetadata)] = {
+  private def prepareInitProduceIdTransit(
+    transactionalId: String,
+    transactionTimeoutMs: Int,
+    coordinatorEpoch: Int,
+    txnMetadata: TransactionMetadata): ApiResult[(Int, TxnTransitMetadata)] = {
     if (txnMetadata.pendingTransitionInProgress) {
       // return a retriable exception to let the client backoff and retry
       Left(Errors.CONCURRENT_TRANSACTIONS)
@@ -225,11 +232,12 @@ class TransactionCoordinator(brokerId: Int,
     }
   }
 
-  def handleAddPartitionsToTransaction(transactionalId: String,
-                                       producerId: Long,
-                                       producerEpoch: Short,
-                                       partitions: collection.Set[TopicPartition],
-                                       responseCallback: AddPartitionsCallback): Unit = {
+  def handleAddPartitionsToTransaction(
+    transactionalId: String,
+    producerId: Long,
+    producerEpoch: Short,
+    partitions: collection.Set[TopicPartition],
+    responseCallback: AddPartitionsCallback): Unit = {
     if (transactionalId == null || transactionalId.isEmpty) {
       debug(s"Returning ${Errors.INVALID_REQUEST} error code to client for $transactionalId's AddPartitions request")
       responseCallback(Errors.INVALID_REQUEST)
@@ -279,23 +287,25 @@ class TransactionCoordinator(brokerId: Int,
   }
 
   def handleTxnEmigration(txnTopicPartitionId: Int, coordinatorEpoch: Int) {
-      txnManager.removeTransactionsForTxnTopicPartition(txnTopicPartitionId, coordinatorEpoch)
-      txnMarkerChannelManager.removeMarkersForTxnTopicPartition(txnTopicPartitionId)
+    txnManager.removeTransactionsForTxnTopicPartition(txnTopicPartitionId, coordinatorEpoch)
+    txnMarkerChannelManager.removeMarkersForTxnTopicPartition(txnTopicPartitionId)
   }
 
-  private def logInvalidStateTransitionAndReturnError(transactionalId: String,
-                                                      transactionState: TransactionState,
-                                                      transactionResult: TransactionResult) = {
+  private def logInvalidStateTransitionAndReturnError(
+    transactionalId: String,
+    transactionState: TransactionState,
+    transactionResult: TransactionResult) = {
     debug(s"TransactionalId: $transactionalId's state is $transactionState, but received transaction " +
       s"marker result to send: $transactionResult")
     Left(Errors.INVALID_TXN_STATE)
   }
 
-  def handleEndTransaction(transactionalId: String,
-                           producerId: Long,
-                           producerEpoch: Short,
-                           txnMarkerResult: TransactionResult,
-                           responseCallback: EndTxnCallback): Unit = {
+  def handleEndTransaction(
+    transactionalId: String,
+    producerId: Long,
+    producerEpoch: Short,
+    txnMarkerResult: TransactionResult,
+    responseCallback: EndTxnCallback): Unit = {
     if (transactionalId == null || transactionalId.isEmpty)
       responseCallback(Errors.INVALID_REQUEST)
     else {
@@ -387,7 +397,7 @@ class TransactionCoordinator(brokerId: Int,
                       else if (txnMetadata.pendingTransitionInProgress)
                         Left(Errors.CONCURRENT_TRANSACTIONS)
                       else txnMetadata.state match {
-                        case Empty| Ongoing | CompleteCommit | CompleteAbort =>
+                        case Empty | Ongoing | CompleteCommit | CompleteAbort =>
                           logInvalidStateTransitionAndReturnError(transactionalId, txnMetadata.state, txnMarkerResult)
                         case PrepareCommit =>
                           if (txnMarkerResult != TransactionResult.COMMIT)
@@ -468,7 +478,8 @@ class TransactionCoordinator(brokerId: Int,
           }
           transitMetadata match {
             case Right(txnTransitMetadata) =>
-              handleEndTransaction(txnMetadata.transactionalId,
+              handleEndTransaction(
+                txnMetadata.transactionalId,
                 txnTransitMetadata.producerId,
                 txnTransitMetadata.producerEpoch,
                 TransactionResult.ABORT,
@@ -476,8 +487,8 @@ class TransactionCoordinator(brokerId: Int,
                   case Errors.NONE =>
                     info(s"Completed rollback ongoing transaction of transactionalId: ${txnIdAndPidEpoch.transactionalId} due to timeout")
                   case e @ (Errors.INVALID_PRODUCER_ID_MAPPING |
-                            Errors.INVALID_PRODUCER_EPOCH |
-                            Errors.CONCURRENT_TRANSACTIONS) =>
+                    Errors.INVALID_PRODUCER_EPOCH |
+                    Errors.CONCURRENT_TRANSACTIONS) =>
                     debug(s"Rolling back ongoing transaction of transactionalId: ${txnIdAndPidEpoch.transactionalId} has aborted due to ${e.exceptionName}")
                   case e =>
                     warn(s"Rolling back ongoing transaction of transactionalId: ${txnIdAndPidEpoch.transactionalId} failed due to ${e.exceptionName}")
@@ -496,11 +507,11 @@ class TransactionCoordinator(brokerId: Int,
   def startup(enableTransactionalIdExpiration: Boolean = true) {
     info("Starting up.")
     scheduler.startup()
-    scheduler.schedule("transaction-abort",
+    scheduler.schedule(
+      "transaction-abort",
       abortTimedOutTransactions,
       txnConfig.abortTimedOutTransactionsIntervalMs,
-      txnConfig.abortTimedOutTransactionsIntervalMs
-    )
+      txnConfig.abortTimedOutTransactionsIntervalMs)
     if (enableTransactionalIdExpiration)
       txnManager.enableTransactionalIdExpiration()
     txnMarkerChannelManager.start()

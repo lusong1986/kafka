@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 package kafka.javaapi.message
 
 import java.nio.ByteBuffer
@@ -25,7 +25,7 @@ import scala.collection.JavaConverters._
 
 class ByteBufferMessageSet(val buffer: ByteBuffer) extends MessageSet {
   private val underlying: kafka.message.ByteBufferMessageSet = new kafka.message.ByteBufferMessageSet(buffer)
-  
+
   def this(compressionCodec: CompressionCodec, messages: java.util.List[Message]) {
     this(new kafka.message.ByteBufferMessageSet(compressionCodec, new LongRef(0), messages.asScala: _*).buffer)
   }
@@ -61,7 +61,6 @@ class ByteBufferMessageSet(val buffer: ByteBuffer) extends MessageSet {
       case _ => false
     }
   }
-
 
   override def hashCode: Int = buffer.hashCode
 }

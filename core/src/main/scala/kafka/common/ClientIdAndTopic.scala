@@ -32,4 +32,3 @@ case class ClientIdAllTopics(clientId: String) extends ClientIdTopic {
   override def toString = "%s-%s".format(clientId, "AllTopics")
 }
 
-

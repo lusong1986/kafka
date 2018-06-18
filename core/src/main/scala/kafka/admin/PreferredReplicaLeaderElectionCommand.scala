@@ -22,7 +22,7 @@ import kafka.common.AdminCommandFailedException
 import kafka.zk.KafkaZkClient
 
 import collection._
-import org.apache.kafka.common.utils.{Time, Utils}
+import org.apache.kafka.common.utils.{ Time, Utils }
 import org.apache.kafka.common.security.JaasUtils
 import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.KeeperException.NodeExistsException
@@ -33,7 +33,7 @@ object PreferredReplicaLeaderElectionCommand extends Logging {
     val parser = new OptionParser(false)
     val jsonFileOpt = parser.accepts("path-to-json-file", "The JSON file with the list of partitions " +
       "for which preferred replica leader election should be done, in the following format - \n" +
-       "{\"partitions\":\n\t[{\"topic\": \"foo\", \"partition\": 1},\n\t {\"topic\": \"foobar\", \"partition\": 2}]\n}\n" +
+      "{\"partitions\":\n\t[{\"topic\": \"foo\", \"partition\": 1},\n\t {\"topic\": \"foobar\", \"partition\": 2}]\n}\n" +
       "Defaults to all existing partitions")
       .withRequiredArg
       .describedAs("list of partitions for which preferred replica leader election needs to be triggered")
@@ -43,12 +43,12 @@ object PreferredReplicaLeaderElectionCommand extends Logging {
       .withRequiredArg
       .describedAs("urls")
       .ofType(classOf[String])
-      
-    if(args.length == 0)
-      CommandLineUtils.printUsageAndDie(parser, "This tool causes leadership for each partition to be transferred back to the 'preferred replica'," + 
-                                                " it can be used to balance leadership among the servers.")
 
-    val options = parser.parse(args : _*)
+    if (args.length == 0)
+      CommandLineUtils.printUsageAndDie(parser, "This tool causes leadership for each partition to be transferred back to the 'preferred replica'," +
+        " it can be used to balance leadership among the servers.")
+
+    val options = parser.parse(args: _*)
 
     CommandLineUtils.checkRequiredArgs(parser, options, zkConnectOpt)
 
@@ -97,8 +97,9 @@ object PreferredReplicaLeaderElectionCommand extends Logging {
     }
   }
 
-  def writePreferredReplicaElectionData(zkClient: KafkaZkClient,
-                                        partitionsUndergoingPreferredReplicaElection: Set[TopicPartition]) {
+  def writePreferredReplicaElectionData(
+    zkClient: KafkaZkClient,
+    partitionsUndergoingPreferredReplicaElection: Set[TopicPartition]) {
     try {
       zkClient.createPreferredReplicaElection(partitionsUndergoingPreferredReplicaElection.toSet)
       println("Created preferred replica election path with %s".format(partitionsUndergoingPreferredReplicaElection.mkString(",")))
@@ -115,8 +116,9 @@ class PreferredReplicaLeaderElectionCommand(zkClient: KafkaZkClient, partitionsF
   def moveLeaderToPreferredReplica() = {
     try {
       val topics = partitionsFromUser.map(_.topic).toSet
-      val partitionsFromZk = zkClient.getPartitionsForTopics(topics).flatMap{ case (topic, partitions) =>
-        partitions.map(new TopicPartition(topic, _))
+      val partitionsFromZk = zkClient.getPartitionsForTopics(topics).flatMap {
+        case (topic, partitions) =>
+          partitions.map(new TopicPartition(topic, _))
       }.toSet
 
       val (validPartitions, invalidPartitions) = partitionsFromUser.partition(partitionsFromZk.contains)

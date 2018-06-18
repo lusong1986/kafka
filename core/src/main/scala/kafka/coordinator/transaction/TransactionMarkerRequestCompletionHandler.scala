@@ -18,7 +18,7 @@
 package kafka.coordinator.transaction
 
 import kafka.utils.Logging
-import org.apache.kafka.clients.{ClientResponse, RequestCompletionHandler}
+import org.apache.kafka.clients.{ ClientResponse, RequestCompletionHandler }
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.WriteTxnMarkersResponse
@@ -26,10 +26,11 @@ import org.apache.kafka.common.requests.WriteTxnMarkersResponse
 import scala.collection.mutable
 import scala.collection.JavaConverters._
 
-class TransactionMarkerRequestCompletionHandler(brokerId: Int,
-                                                txnStateManager: TransactionStateManager,
-                                                txnMarkerChannelManager: TransactionMarkerChannelManager,
-                                                txnIdAndMarkerEntries: java.util.List[TxnIdAndMarkerEntry]) extends RequestCompletionHandler with Logging {
+class TransactionMarkerRequestCompletionHandler(
+  brokerId: Int,
+  txnStateManager: TransactionStateManager,
+  txnMarkerChannelManager: TransactionMarkerChannelManager,
+  txnIdAndMarkerEntries: java.util.List[TxnIdAndMarkerEntry]) extends RequestCompletionHandler with Logging {
 
   this.logIdent = "[Transaction Marker Request Completion Handler " + brokerId + "]: "
 
@@ -75,7 +76,8 @@ class TransactionMarkerRequestCompletionHandler(brokerId: Int,
               trace(s"Re-enqueuing ${txnMarker.transactionResult} transaction markers for transactional id $transactionalId " +
                 s"under coordinator epoch ${txnMarker.coordinatorEpoch}")
 
-              txnMarkerChannelManager.addTxnMarkersToBrokerQueue(transactionalId,
+              txnMarkerChannelManager.addTxnMarkersToBrokerQueue(
+                transactionalId,
                 txnMarker.producerId,
                 txnMarker.producerEpoch,
                 txnMarker.transactionResult,
@@ -136,17 +138,17 @@ class TransactionMarkerRequestCompletionHandler(brokerId: Int,
                       txnMetadata.removePartition(topicPartition)
 
                     case Errors.CORRUPT_MESSAGE |
-                         Errors.MESSAGE_TOO_LARGE |
-                         Errors.RECORD_LIST_TOO_LARGE |
-                         Errors.INVALID_REQUIRED_ACKS => // these are all unexpected and fatal errors
+                      Errors.MESSAGE_TOO_LARGE |
+                      Errors.RECORD_LIST_TOO_LARGE |
+                      Errors.INVALID_REQUIRED_ACKS => // these are all unexpected and fatal errors
 
                       throw new IllegalStateException(s"Received fatal error ${error.exceptionName} while sending txn marker for $transactionalId")
 
                     case Errors.UNKNOWN_TOPIC_OR_PARTITION |
-                         Errors.NOT_LEADER_FOR_PARTITION |
-                         Errors.NOT_ENOUGH_REPLICAS |
-                         Errors.NOT_ENOUGH_REPLICAS_AFTER_APPEND |
-                         Errors.REQUEST_TIMED_OUT => // these are retriable errors
+                      Errors.NOT_LEADER_FOR_PARTITION |
+                      Errors.NOT_ENOUGH_REPLICAS |
+                      Errors.NOT_ENOUGH_REPLICAS_AFTER_APPEND |
+                      Errors.REQUEST_TIMED_OUT => // these are retriable errors
 
                       info(s"Sending $transactionalId's transaction marker for partition $topicPartition has failed with error ${error.exceptionName}, retrying " +
                         s"with current coordinator epoch ${epochAndMetadata.coordinatorEpoch}")
@@ -154,7 +156,7 @@ class TransactionMarkerRequestCompletionHandler(brokerId: Int,
                       retryPartitions += topicPartition
 
                     case Errors.INVALID_PRODUCER_EPOCH |
-                         Errors.TRANSACTION_COORDINATOR_FENCED => // producer or coordinator epoch has changed, this txn can now be ignored
+                      Errors.TRANSACTION_COORDINATOR_FENCED => // producer or coordinator epoch has changed, this txn can now be ignored
 
                       info(s"Sending $transactionalId's transaction marker for partition $topicPartition has permanently failed with error ${error.exceptionName} " +
                         s"with the current coordinator epoch ${epochAndMetadata.coordinatorEpoch}; cancel sending any more transaction markers $txnMarker to the brokers")
@@ -163,7 +165,7 @@ class TransactionMarkerRequestCompletionHandler(brokerId: Int,
                       abortSending = true
 
                     case Errors.UNSUPPORTED_FOR_MESSAGE_FORMAT |
-                         Errors.UNSUPPORTED_VERSION =>
+                      Errors.UNSUPPORTED_VERSION =>
                       // The producer would have failed to send data to the failed topic so we can safely remove the partition
                       // from the set waiting for markers
                       info(s"Sending $transactionalId's transaction marker from partition $topicPartition has failed with " +

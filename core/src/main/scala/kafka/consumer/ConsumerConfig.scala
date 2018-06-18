@@ -20,17 +20,17 @@ package kafka.consumer
 import java.util.Properties
 import kafka.api.OffsetRequest
 import kafka.utils._
-import kafka.common.{InvalidConfigException, Config}
+import kafka.common.{ InvalidConfigException, Config }
 import java.util.Locale
 
 @deprecated("This object has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.ConsumerConfig instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.ConsumerConfig instead.", "0.11.0.0")
 object ConsumerConfig extends Config {
   val RefreshMetadataBackoffMs = 200
   val SocketTimeout = 30 * 1000
-  val SocketBufferSize = 64*1024
+  val SocketBufferSize = 64 * 1024
   val FetchSize = 1024 * 1024
-  val MaxFetchSize = 10*FetchSize
+  val MaxFetchSize = 10 * FetchSize
   val NumConsumerFetchers = 1
   val DefaultFetcherBackoffMs = 1000
   val AutoCommit = true
@@ -78,7 +78,7 @@ object ConsumerConfig extends Config {
       case OffsetRequest.SmallestTimeString =>
       case OffsetRequest.LargestTimeString =>
       case _ => throw new InvalidConfigException("Wrong value " + autoOffsetReset + " of auto.offset.reset in ConsumerConfig; " +
-                                                 "Valid values are " + OffsetRequest.SmallestTimeString + " and " + OffsetRequest.LargestTimeString)
+        "Valid values are " + OffsetRequest.SmallestTimeString + " and " + OffsetRequest.LargestTimeString)
     }
   }
 
@@ -87,7 +87,7 @@ object ConsumerConfig extends Config {
       case "zookeeper" =>
       case "kafka" =>
       case _ => throw new InvalidConfigException("Wrong value " + storage + " of offsets.storage in consumer config; " +
-                                                 "Valid values are 'zookeeper' and 'kafka'")
+        "Valid values are 'zookeeper' and 'kafka'")
     }
   }
 
@@ -102,7 +102,7 @@ object ConsumerConfig extends Config {
 }
 
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.ConsumerConfig instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.ConsumerConfig instead.", "0.11.0.0")
 class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(props) {
   import ConsumerConfig._
 
@@ -114,8 +114,10 @@ class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(
   /** a string that uniquely identifies a set of consumers within the same consumer group */
   val groupId = props.getString("group.id")
 
-  /** consumer id: generated automatically if not set.
-   *  Set this explicitly for only testing purpose. */
+  /**
+   * consumer id: generated automatically if not set.
+   *  Set this explicitly for only testing purpose.
+   */
   val consumerId: Option[String] = Option(props.getString("consumer.id", null))
 
   /** the socket timeout for network requests. Its value should be at least fetch.wait.max.ms. */
@@ -161,23 +163,29 @@ class ConsumerConfig private (val props: VerifiableProperties) extends ZKConfig(
 
   /** backoff time to reconnect the offsets channel or to retry offset fetches/commits */
   val offsetsChannelBackoffMs = props.getInt("offsets.channel.backoff.ms", OffsetsChannelBackoffMs)
-  /** socket timeout to use when reading responses for Offset Fetch/Commit requests. This timeout will also be used for
-   *  the ConsumerMetdata requests that are used to query for the offset coordinator. */
+  /**
+   * socket timeout to use when reading responses for Offset Fetch/Commit requests. This timeout will also be used for
+   *  the ConsumerMetdata requests that are used to query for the offset coordinator.
+   */
   val offsetsChannelSocketTimeoutMs = props.getInt("offsets.channel.socket.timeout.ms", OffsetsChannelSocketTimeoutMs)
 
-  /** Retry the offset commit up to this many times on failure. This retry count only applies to offset commits during
-    * shut-down. It does not apply to commits from the auto-commit thread. It also does not apply to attempts to query
-    * for the offset coordinator before committing offsets. i.e., if a consumer metadata request fails for any reason,
-    * it is retried and that retry does not count toward this limit. */
+  /**
+   * Retry the offset commit up to this many times on failure. This retry count only applies to offset commits during
+   * shut-down. It does not apply to commits from the auto-commit thread. It also does not apply to attempts to query
+   * for the offset coordinator before committing offsets. i.e., if a consumer metadata request fails for any reason,
+   * it is retried and that retry does not count toward this limit.
+   */
   val offsetsCommitMaxRetries = props.getInt("offsets.commit.max.retries", OffsetsCommitMaxRetries)
 
   /** Specify whether offsets should be committed to "zookeeper" (default) or "kafka" */
   val offsetsStorage = props.getString("offsets.storage", OffsetsStorage).toLowerCase(Locale.ROOT)
 
-  /** If you are using "kafka" as offsets.storage, you can dual commit offsets to ZooKeeper (in addition to Kafka). This
-    * is required during migration from zookeeper-based offset storage to kafka-based offset storage. With respect to any
-    * given consumer group, it is safe to turn this off after all instances within that group have been migrated to
-    * the new jar that commits offsets to the broker (instead of directly to ZooKeeper). */
+  /**
+   * If you are using "kafka" as offsets.storage, you can dual commit offsets to ZooKeeper (in addition to Kafka). This
+   * is required during migration from zookeeper-based offset storage to kafka-based offset storage. With respect to any
+   * given consumer group, it is safe to turn this off after all instances within that group have been migrated to
+   * the new jar that commits offsets to the broker (instead of directly to ZooKeeper).
+   */
   val dualCommitEnabled = props.getBoolean("dual.commit.enabled", offsetsStorage == "kafka")
 
   /* what to do if an offset is out of range.

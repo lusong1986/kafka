@@ -25,7 +25,7 @@ import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.clients.CommonClientConfigs
 import joptsimple._
 
-import scala.util.{Failure, Success}
+import scala.util.{ Failure, Success }
 
 /**
  * A command for retrieving broker version information.
@@ -41,11 +41,12 @@ object BrokerApiVersionsCommand {
     val adminClient = createAdminClient(opts)
     adminClient.awaitBrokers()
     val brokerMap = adminClient.listAllBrokerVersionInfo()
-    brokerMap.foreach { case (broker, versionInfoOrError) =>
-      versionInfoOrError match {
-        case Success(v) => out.print(s"${broker} -> ${v.toString(true)}\n")
-        case Failure(v) => out.print(s"${broker} -> ERROR: ${v}\n")
-      }
+    brokerMap.foreach {
+      case (broker, versionInfoOrError) =>
+        versionInfoOrError match {
+          case Success(v) => out.print(s"${broker} -> ${v.toString(true)}\n")
+          case Failure(v) => out.print(s"${broker} -> ERROR: ${v}\n")
+        }
     }
     adminClient.close()
   }
@@ -65,14 +66,14 @@ object BrokerApiVersionsCommand {
 
     val parser = new OptionParser(false)
     val commandConfigOpt = parser.accepts("command-config", CommandConfigDoc)
-                                 .withRequiredArg
-                                 .describedAs("command config property file")
-                                 .ofType(classOf[String])
+      .withRequiredArg
+      .describedAs("command config property file")
+      .ofType(classOf[String])
     val bootstrapServerOpt = parser.accepts("bootstrap-server", BootstrapServerDoc)
-                                   .withRequiredArg
-                                   .describedAs("server(s) to use for bootstrapping")
-                                   .ofType(classOf[String])
-    val options = parser.parse(args : _*)
+      .withRequiredArg
+      .describedAs("server(s) to use for bootstrapping")
+      .ofType(classOf[String])
+    val options = parser.parse(args: _*)
     checkArgs()
 
     def checkArgs() {

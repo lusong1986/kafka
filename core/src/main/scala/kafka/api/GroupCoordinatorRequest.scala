@@ -40,17 +40,18 @@ object GroupCoordinatorRequest {
 }
 
 @deprecated("This object has been deprecated and will be removed in a future release.", "1.0.0")
-case class GroupCoordinatorRequest(group: String,
-                                   versionId: Short = GroupCoordinatorRequest.CurrentVersion,
-                                   correlationId: Int = 0,
-                                   clientId: String = GroupCoordinatorRequest.DefaultClientId)
+case class GroupCoordinatorRequest(
+  group: String,
+  versionId: Short = GroupCoordinatorRequest.CurrentVersion,
+  correlationId: Int = 0,
+  clientId: String = GroupCoordinatorRequest.DefaultClientId)
   extends RequestOrResponse(Some(ApiKeys.FIND_COORDINATOR.id)) {
 
   def sizeInBytes =
     2 + /* versionId */
-    4 + /* correlationId */
-    ApiUtils.shortStringLength(clientId) +
-    ApiUtils.shortStringLength(group)
+      4 + /* correlationId */
+      ApiUtils.shortStringLength(clientId) +
+      ApiUtils.shortStringLength(group)
 
   def writeTo(buffer: ByteBuffer) {
     // envelope

@@ -18,7 +18,6 @@
 
 package kafka.common
 
-
 /**
  * Thrown when a produce request times out - i.e., if one or more partitions it
  * sends messages to receives fewer than the requiredAcks that is specified in

@@ -17,27 +17,44 @@
 
 package kafka.log
 
-import java.io.{File, IOException}
-import java.nio._
+import java.io.File
+import java.io.IOException
+import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-import com.yammer.metrics.core.Gauge
-import kafka.common._
-import kafka.metrics.KafkaMetricsGroup
-import kafka.server.{BrokerReconfigurable, KafkaConfig, LogDirFailureChannel}
-import kafka.utils._
-import org.apache.kafka.common.record._
-import org.apache.kafka.common.utils.Time
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
+import scala.collection.Set
+import scala.collection.mutable
+
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.errors.KafkaStorageException
+import org.apache.kafka.common.record.BufferSupplier
+import org.apache.kafka.common.record.ControlRecordType
+import org.apache.kafka.common.record.FileRecords
+import org.apache.kafka.common.record.MemoryRecords
 import org.apache.kafka.common.record.MemoryRecords.RecordFilter
 import org.apache.kafka.common.record.MemoryRecords.RecordFilter.BatchRetention
+import org.apache.kafka.common.record.Record
+import org.apache.kafka.common.record.RecordBatch
+import org.apache.kafka.common.utils.Time
 
-import scala.collection.{Set, mutable}
-import scala.collection.JavaConverters._
+import com.yammer.metrics.core.Gauge
+
+import kafka.common.LogCleaningAbortedException
+import kafka.common.ThreadShutdownException
+import kafka.metrics.KafkaMetricsGroup
+import kafka.server.BrokerReconfigurable
+import kafka.server.KafkaConfig
+import kafka.server.LogDirFailureChannel
+import kafka.utils.Logging
+import kafka.utils.Pool
+import kafka.utils.ShutdownableThread
+import kafka.utils.Throttler
+import kafka.utils.nonthreadsafe
+import kafka.utils.threadsafe
 
 /**
  * The cleaner is responsible for removing obsolete records from logs which have the "compact" retention strategy.
@@ -89,12 +106,12 @@ import scala.collection.JavaConverters._
  * @param logs The pool of logs
  * @param time A way to control the passage of time
  */
-class LogCleaner(initialConfig: CleanerConfig,
-                 val logDirs: Seq[File],
-                 val logs: Pool[TopicPartition, Log],
-                 val logDirFailureChannel: LogDirFailureChannel,
-                 time: Time = Time.SYSTEM) extends Logging with KafkaMetricsGroup with BrokerReconfigurable
-{
+class LogCleaner(
+  initialConfig: CleanerConfig,
+  val logDirs: Seq[File],
+  val logs: Pool[TopicPartition, Log],
+  val logDirFailureChannel: LogDirFailureChannel,
+  time: Time = Time.SYSTEM) extends Logging with KafkaMetricsGroup with BrokerReconfigurable {
 
   /* Log cleaner configuration which may be dynamically updated */
   @volatile private var config = initialConfig
@@ -103,35 +120,39 @@ class LogCleaner(initialConfig: CleanerConfig,
   private[log] val cleanerManager = new LogCleanerManager(logDirs, logs, logDirFailureChannel)
 
   /* a throttle used to limit the I/O of all the cleaner threads to a user-specified maximum rate */
-  private val throttler = new Throttler(desiredRatePerSec = config.maxIoBytesPerSecond,
-                                        checkIntervalMs = 300,
-                                        throttleDown = true,
-                                        "cleaner-io",
-                                        "bytes",
-                                        time = time)
+  private val throttler = new Throttler(
+    desiredRatePerSec = config.maxIoBytesPerSecond,
+    checkIntervalMs = 300,
+    throttleDown = true,
+    "cleaner-io",
+    "bytes",
+    time = time)
 
   /* the threads */
   private val cleaners = mutable.ArrayBuffer[CleanerThread]()
 
   /* a metric to track the maximum utilization of any thread's buffer in the last cleaning */
-  newGauge("max-buffer-utilization-percent",
-           new Gauge[Int] {
-             def value: Int = cleaners.map(_.lastStats).map(100 * _.bufferUtilization).max.toInt
-           })
+  newGauge(
+    "max-buffer-utilization-percent",
+    new Gauge[Int] {
+      def value: Int = cleaners.map(_.lastStats).map(100 * _.bufferUtilization).max.toInt
+    })
   /* a metric to track the recopy rate of each thread's last cleaning */
-  newGauge("cleaner-recopy-percent",
-           new Gauge[Int] {
-             def value: Int = {
-               val stats = cleaners.map(_.lastStats)
-               val recopyRate = stats.map(_.bytesWritten).sum.toDouble / math.max(stats.map(_.bytesRead).sum, 1)
-               (100 * recopyRate).toInt
-             }
-           })
+  newGauge(
+    "cleaner-recopy-percent",
+    new Gauge[Int] {
+      def value: Int = {
+        val stats = cleaners.map(_.lastStats)
+        val recopyRate = stats.map(_.bytesWritten).sum.toDouble / math.max(stats.map(_.bytesRead).sum, 1)
+        (100 * recopyRate).toInt
+      }
+    })
   /* a metric to track the maximum cleaning time for the last cleaning from each thread */
-  newGauge("max-clean-time-secs",
-           new Gauge[Int] {
-             def value: Int = cleaners.map(_.lastStats).map(_.elapsedSecs).max.toInt
-           })
+  newGauge(
+    "max-clean-time-secs",
+    new Gauge[Int] {
+      def value: Int = cleaners.map(_.lastStats).map(_.elapsedSecs).max.toInt
+    })
 
   /**
    * Start the background cleaning
@@ -173,9 +194,9 @@ class LogCleaner(initialConfig: CleanerConfig,
   }
 
   /**
-    * Reconfigure log clean config. This simply stops current log cleaners and creates new ones.
-    * That ensures that if any of the cleaners had failed, new cleaners are created to match the new config.
-    */
+   * Reconfigure log clean config. This simply stops current log cleaners and creates new ones.
+   * That ensures that if any of the cleaners had failed, new cleaners are created to match the new config.
+   */
   override def reconfigure(oldConfig: KafkaConfig, newConfig: KafkaConfig): Unit = {
     config = LogCleaner.cleanerConfig(newConfig)
     shutdown()
@@ -194,7 +215,7 @@ class LogCleaner(initialConfig: CleanerConfig,
    * Update checkpoint file, removing topics and partitions that no longer exist
    */
   def updateCheckpoints(dataDir: File) {
-    cleanerManager.updateCheckpoints(dataDir, update=None)
+    cleanerManager.updateCheckpoints(dataDir, update = None)
   }
 
   def alterCheckpointDir(topicPartition: TopicPartition, sourceLogDir: File, destLogDir: File): Unit = {
@@ -266,15 +287,17 @@ class LogCleaner(initialConfig: CleanerConfig,
     if (config.dedupeBufferSize / config.numThreads > Int.MaxValue)
       warn("Cannot use more than 2G of cleaner buffer space per cleaner thread, ignoring excess buffer space...")
 
-    val cleaner = new Cleaner(id = threadId,
-                              offsetMap = new SkimpyOffsetMap(memory = math.min(config.dedupeBufferSize / config.numThreads, Int.MaxValue).toInt,
-                                                              hashAlgorithm = config.hashAlgorithm),
-                              ioBufferSize = config.ioBufferSize / config.numThreads / 2,
-                              maxIoBufferSize = config.maxMessageSize,
-                              dupBufferLoadFactor = config.dedupeBufferLoadFactor,
-                              throttler = throttler,
-                              time = time,
-                              checkDone = checkDone)
+    val cleaner = new Cleaner(
+      id = threadId,
+      offsetMap = new SkimpyOffsetMap(
+        memory = math.min(config.dedupeBufferSize / config.numThreads, Int.MaxValue).toInt,
+        hashAlgorithm = config.hashAlgorithm),
+      ioBufferSize = config.ioBufferSize / config.numThreads / 2,
+      maxIoBufferSize = config.maxMessageSize,
+      dupBufferLoadFactor = config.dedupeBufferLoadFactor,
+      throttler = throttler,
+      time = time,
+      checkDone = checkDone)
 
     @volatile var lastStats: CleanerStats = new CleanerStats()
 
@@ -317,7 +340,7 @@ class LogCleaner(initialConfig: CleanerConfig,
           true
       }
       val deletable: Iterable[(TopicPartition, Log)] = cleanerManager.deletableLogs()
-      deletable.foreach{
+      deletable.foreach {
         case (topicPartition, log) =>
           try {
             log.deleteOldSegments()
@@ -334,24 +357,28 @@ class LogCleaner(initialConfig: CleanerConfig,
      */
     def recordStats(id: Int, name: String, from: Long, to: Long, stats: CleanerStats) {
       this.lastStats = stats
-      def mb(bytes: Double) = bytes / (1024*1024)
+      def mb(bytes: Double) = bytes / (1024 * 1024)
       val message =
         "%n\tLog cleaner thread %d cleaned log %s (dirty section = [%d, %d])%n".format(id, name, from, to) +
-        "\t%,.1f MB of log processed in %,.1f seconds (%,.1f MB/sec).%n".format(mb(stats.bytesRead),
-                                                                                stats.elapsedSecs,
-                                                                                mb(stats.bytesRead/stats.elapsedSecs)) +
-        "\tIndexed %,.1f MB in %.1f seconds (%,.1f Mb/sec, %.1f%% of total time)%n".format(mb(stats.mapBytesRead),
-                                                                                           stats.elapsedIndexSecs,
-                                                                                           mb(stats.mapBytesRead)/stats.elapsedIndexSecs,
-                                                                                           100 * stats.elapsedIndexSecs/stats.elapsedSecs) +
-        "\tBuffer utilization: %.1f%%%n".format(100 * stats.bufferUtilization) +
-        "\tCleaned %,.1f MB in %.1f seconds (%,.1f Mb/sec, %.1f%% of total time)%n".format(mb(stats.bytesRead),
-                                                                                           stats.elapsedSecs - stats.elapsedIndexSecs,
-                                                                                           mb(stats.bytesRead)/(stats.elapsedSecs - stats.elapsedIndexSecs), 100 * (stats.elapsedSecs - stats.elapsedIndexSecs).toDouble/stats.elapsedSecs) +
-        "\tStart size: %,.1f MB (%,d messages)%n".format(mb(stats.bytesRead), stats.messagesRead) +
-        "\tEnd size: %,.1f MB (%,d messages)%n".format(mb(stats.bytesWritten), stats.messagesWritten) +
-        "\t%.1f%% size reduction (%.1f%% fewer messages)%n".format(100.0 * (1.0 - stats.bytesWritten.toDouble/stats.bytesRead),
-                                                                   100.0 * (1.0 - stats.messagesWritten.toDouble/stats.messagesRead))
+          "\t%,.1f MB of log processed in %,.1f seconds (%,.1f MB/sec).%n".format(
+            mb(stats.bytesRead),
+            stats.elapsedSecs,
+            mb(stats.bytesRead / stats.elapsedSecs)) +
+            "\tIndexed %,.1f MB in %.1f seconds (%,.1f Mb/sec, %.1f%% of total time)%n".format(
+              mb(stats.mapBytesRead),
+              stats.elapsedIndexSecs,
+              mb(stats.mapBytesRead) / stats.elapsedIndexSecs,
+              100 * stats.elapsedIndexSecs / stats.elapsedSecs) +
+              "\tBuffer utilization: %.1f%%%n".format(100 * stats.bufferUtilization) +
+              "\tCleaned %,.1f MB in %.1f seconds (%,.1f Mb/sec, %.1f%% of total time)%n".format(
+                mb(stats.bytesRead),
+                stats.elapsedSecs - stats.elapsedIndexSecs,
+                mb(stats.bytesRead) / (stats.elapsedSecs - stats.elapsedIndexSecs), 100 * (stats.elapsedSecs - stats.elapsedIndexSecs).toDouble / stats.elapsedSecs) +
+                "\tStart size: %,.1f MB (%,d messages)%n".format(mb(stats.bytesRead), stats.messagesRead) +
+                "\tEnd size: %,.1f MB (%,d messages)%n".format(mb(stats.bytesWritten), stats.messagesWritten) +
+                "\t%.1f%% size reduction (%.1f%% fewer messages)%n".format(
+                  100.0 * (1.0 - stats.bytesWritten.toDouble / stats.bytesRead),
+                  100.0 * (1.0 - stats.messagesWritten.toDouble / stats.messagesRead))
       info(message)
       if (stats.invalidMessagesRead > 0) {
         warn("\tFound %d invalid messages during compaction.".format(stats.invalidMessagesRead))
@@ -369,11 +396,11 @@ object LogCleaner {
     KafkaConfig.LogCleanerIoBufferSizeProp,
     KafkaConfig.MessageMaxBytesProp,
     KafkaConfig.LogCleanerIoMaxBytesPerSecondProp,
-    KafkaConfig.LogCleanerBackoffMsProp
-  )
+    KafkaConfig.LogCleanerBackoffMsProp)
 
   def cleanerConfig(config: KafkaConfig): CleanerConfig = {
-    CleanerConfig(numThreads = config.logCleanerThreads,
+    CleanerConfig(
+      numThreads = config.logCleanerThreads,
       dedupeBufferSize = config.logCleanerDedupeBufferSize,
       dedupeBufferLoadFactor = config.logCleanerDedupeBufferLoadFactor,
       ioBufferSize = config.logCleanerIoBufferSize,
@@ -396,14 +423,15 @@ object LogCleaner {
  * @param time The time instance
  * @param checkDone Check if the cleaning for a partition is finished or aborted.
  */
-private[log] class Cleaner(val id: Int,
-                           val offsetMap: OffsetMap,
-                           ioBufferSize: Int,
-                           maxIoBufferSize: Int,
-                           dupBufferLoadFactor: Double,
-                           throttler: Throttler,
-                           time: Time,
-                           checkDone: (TopicPartition) => Unit) extends Logging {
+private[log] class Cleaner(
+  val id: Int,
+  val offsetMap: OffsetMap,
+  ioBufferSize: Int,
+  maxIoBufferSize: Int,
+  dupBufferLoadFactor: Double,
+  throttler: Throttler,
+  time: Time,
+  checkDone: (TopicPartition) => Unit) extends Logging {
 
   protected override def loggerName = classOf[LogCleaner].getName
 
@@ -433,7 +461,7 @@ private[log] class Cleaner(val id: Int,
       cleanable.log.logSegments(0, cleanable.firstDirtyOffset).lastOption match {
         case None => 0L
         case Some(seg) => seg.lastModified - cleanable.log.config.deleteRetentionMs
-    }
+      }
 
     doClean(cleanable, deleteHorizonMs)
   }
@@ -454,7 +482,6 @@ private[log] class Cleaner(val id: Int,
     // determine the timestamp up to which the log will be cleaned
     // this is the lower of the last active segment and the compaction lag
     val cleanableHorizonMs = log.logSegments(0, cleanable.firstUncleanableOffset).lastOption.map(_.lastModified).getOrElse(0L)
-
 
     // group the segments and clean the groups
     info("Cleaning log %s (cleaning prior to %s, discarding tombstones prior to %s)...".format(log.name, new Date(cleanableHorizonMs), new Date(deleteHorizonMs)))
@@ -478,11 +505,12 @@ private[log] class Cleaner(val id: Int,
    * @param deleteHorizonMs The time to retain delete tombstones
    * @param stats Collector for cleaning statistics
    */
-  private[log] def cleanSegments(log: Log,
-                                 segments: Seq[LogSegment],
-                                 map: OffsetMap,
-                                 deleteHorizonMs: Long,
-                                 stats: CleanerStats) {
+  private[log] def cleanSegments(
+    log: Log,
+    segments: Seq[LogSegment],
+    map: OffsetMap,
+    deleteHorizonMs: Long,
+    stats: CleanerStats) {
 
     def deleteCleanedFileIfExists(file: File): Unit = {
       Files.deleteIfExists(new File(file.getPath + Log.CleanedFileSuffix).toPath)
@@ -514,7 +542,7 @@ private[log] class Cleaner(val id: Int,
 
         val retainDeletes = currentSegment.lastModified > deleteHorizonMs
         info(s"Cleaning segment $startOffset in log ${log.name} (largest timestamp ${new Date(currentSegment.largestTimestamp)}) " +
-          s"into ${cleaned.baseOffset}, ${if(retainDeletes) "retaining" else "discarding"} deletes.")
+          s"into ${cleaned.baseOffset}, ${if (retainDeletes) "retaining" else "discarding"} deletes.")
         cleanInto(log.topicPartition, currentSegment.log, cleaned, map, retainDeletes, log.config.maxMessageSize,
           transactionMetadata, log.activeProducersWithLastSequence, stats)
 
@@ -555,15 +583,16 @@ private[log] class Cleaner(val id: Int,
    * @param maxLogMessageSize The maximum message size of the corresponding topic
    * @param stats Collector for cleaning statistics
    */
-  private[log] def cleanInto(topicPartition: TopicPartition,
-                             sourceRecords: FileRecords,
-                             dest: LogSegment,
-                             map: OffsetMap,
-                             retainDeletes: Boolean,
-                             maxLogMessageSize: Int,
-                             transactionMetadata: CleanedTransactionMetadata,
-                             activeProducers: Map[Long, Int],
-                             stats: CleanerStats) {
+  private[log] def cleanInto(
+    topicPartition: TopicPartition,
+    sourceRecords: FileRecords,
+    dest: LogSegment,
+    map: OffsetMap,
+    retainDeletes: Boolean,
+    maxLogMessageSize: Int,
+    transactionMetadata: CleanedTransactionMetadata,
+    activeProducers: Map[Long, Int],
+    stats: CleanerStats) {
     val logCleanerFilter = new RecordFilter {
       var discardBatchRecords: Boolean = _
 
@@ -614,7 +643,8 @@ private[log] class Cleaner(val id: Int,
         val retained = MemoryRecords.readableRecords(outputBuffer)
         // it's OK not to hold the Log's lock in this case, because this segment is only accessed by other threads
         // after `Log.replaceSegments` (which acquires the lock) is called
-        dest.append(firstOffset = retained.batches.iterator.next().baseOffset,
+        dest.append(
+          firstOffset = retained.batches.iterator.next().baseOffset,
           largestOffset = result.maxOffset,
           largestTimestamp = result.maxTimestamp,
           shallowOffsetOfMaxTimestamp = result.shallowOffsetOfMaxTimestamp,
@@ -629,9 +659,10 @@ private[log] class Cleaner(val id: Int,
     restoreBuffers()
   }
 
-  private def shouldDiscardBatch(batch: RecordBatch,
-                                 transactionMetadata: CleanedTransactionMetadata,
-                                 retainTxnMarkers: Boolean): Boolean = {
+  private def shouldDiscardBatch(
+    batch: RecordBatch,
+    transactionMetadata: CleanedTransactionMetadata,
+    retainTxnMarkers: Boolean): Boolean = {
     if (batch.isControlBatch) {
       val canDiscardControlBatch = transactionMetadata.onControlBatchRead(batch)
       canDiscardControlBatch && !retainTxnMarkers
@@ -641,11 +672,12 @@ private[log] class Cleaner(val id: Int,
     }
   }
 
-  private def shouldRetainRecord(map: kafka.log.OffsetMap,
-                                 retainDeletes: Boolean,
-                                 batch: RecordBatch,
-                                 record: Record,
-                                 stats: CleanerStats): Boolean = {
+  private def shouldRetainRecord(
+    map: kafka.log.OffsetMap,
+    retainDeletes: Boolean,
+    batch: RecordBatch,
+    record: Record,
+    stats: CleanerStats): Boolean = {
     val pastLatestOffset = record.offset > map.latestOffset
     if (pastLatestOffset)
       return true
@@ -671,7 +703,7 @@ private[log] class Cleaner(val id: Int,
    */
   def growBuffers(maxLogMessageSize: Int) {
     val maxBufferSize = math.max(maxLogMessageSize, maxIoBufferSize)
-    if(readBuffer.capacity >= maxBufferSize || writeBuffer.capacity >= maxBufferSize)
+    if (readBuffer.capacity >= maxBufferSize || writeBuffer.capacity >= maxBufferSize)
       throw new IllegalStateException("This log contains a message larger than maximum allowable size of %s.".format(maxBufferSize))
     val newSize = math.min(this.readBuffer.capacity * 2, maxBufferSize)
     info("Growing cleaner I/O buffers from " + readBuffer.capacity + "bytes to " + newSize + " bytes.")
@@ -683,9 +715,9 @@ private[log] class Cleaner(val id: Int,
    * Restore the I/O buffer capacity to its original size
    */
   def restoreBuffers() {
-    if(this.readBuffer.capacity > this.ioBufferSize)
+    if (this.readBuffer.capacity > this.ioBufferSize)
       this.readBuffer = ByteBuffer.allocate(this.ioBufferSize)
-    if(this.writeBuffer.capacity > this.ioBufferSize)
+    if (this.writeBuffer.capacity > this.ioBufferSize)
       this.writeBuffer = ByteBuffer.allocate(this.ioBufferSize)
   }
 
@@ -703,17 +735,17 @@ private[log] class Cleaner(val id: Int,
   private[log] def groupSegmentsBySize(segments: Iterable[LogSegment], maxSize: Int, maxIndexSize: Int, firstUncleanableOffset: Long): List[Seq[LogSegment]] = {
     var grouped = List[List[LogSegment]]()
     var segs = segments.toList
-    while(segs.nonEmpty) {
+    while (segs.nonEmpty) {
       var group = List(segs.head)
       var logSize = segs.head.size.toLong
       var indexSize = segs.head.offsetIndex.sizeInBytes.toLong
       var timeIndexSize = segs.head.timeIndex.sizeInBytes.toLong
       segs = segs.tail
-      while(segs.nonEmpty &&
-            logSize + segs.head.size <= maxSize &&
-            indexSize + segs.head.offsetIndex.sizeInBytes <= maxIndexSize &&
-            timeIndexSize + segs.head.timeIndex.sizeInBytes <= maxIndexSize &&
-            lastOffsetForFirstSegment(segs, firstUncleanableOffset) - group.last.baseOffset <= Int.MaxValue) {
+      while (segs.nonEmpty &&
+        logSize + segs.head.size <= maxSize &&
+        indexSize + segs.head.offsetIndex.sizeInBytes <= maxIndexSize &&
+        timeIndexSize + segs.head.timeIndex.sizeInBytes <= maxIndexSize &&
+        lastOffsetForFirstSegment(segs, firstUncleanableOffset) - group.last.baseOffset <= Int.MaxValue) {
         group = segs.head :: group
         logSize += segs.head.size
         indexSize += segs.head.offsetIndex.sizeInBytes
@@ -726,16 +758,16 @@ private[log] class Cleaner(val id: Int,
   }
 
   /**
-    * We want to get the last offset in the first log segment in segs.
-    * LogSegment.nextOffset() gives the exact last offset in a segment, but can be expensive since it requires
-    * scanning the segment from the last index entry.
-    * Therefore, we estimate the last offset of the first log segment by using
-    * the base offset of the next segment in the list.
-    * If the next segment doesn't exist, first Uncleanable Offset will be used.
-    *
-    * @param segs - remaining segments to group.
-    * @return The estimated last offset for the first segment in segs
-    */
+   * We want to get the last offset in the first log segment in segs.
+   * LogSegment.nextOffset() gives the exact last offset in a segment, but can be expensive since it requires
+   * scanning the segment from the last index entry.
+   * Therefore, we estimate the last offset of the first log segment by using
+   * the base offset of the next segment in the list.
+   * If the next segment doesn't exist, first Uncleanable Offset will be used.
+   *
+   * @param segs - remaining segments to group.
+   * @return The estimated last offset for the first segment in segs
+   */
   private def lastOffsetForFirstSegment(segs: List[LogSegment], firstUncleanableOffset: Long): Long = {
     if (segs.size > 1) {
       /* if there is a next segment, use its base offset as the bounding offset to guarantee we know
@@ -755,11 +787,12 @@ private[log] class Cleaner(val id: Int,
    * @param map The map in which to store the mappings
    * @param stats Collector for cleaning statistics
    */
-  private[log] def buildOffsetMap(log: Log,
-                                  start: Long,
-                                  end: Long,
-                                  map: OffsetMap,
-                                  stats: CleanerStats) {
+  private[log] def buildOffsetMap(
+    log: Log,
+    start: Long,
+    end: Long,
+    map: OffsetMap,
+    stats: CleanerStats) {
     map.clear()
     val dirty = log.logSegments(start, end).toBuffer
     info("Building offset map for log %s for %d segments in offset range [%d, %d).".format(log.name, dirty.size, start, end))
@@ -790,13 +823,14 @@ private[log] class Cleaner(val id: Int,
    *
    * @return If the map was filled whilst loading from this segment
    */
-  private def buildOffsetMapForSegment(topicPartition: TopicPartition,
-                                       segment: LogSegment,
-                                       map: OffsetMap,
-                                       startOffset: Long,
-                                       maxLogMessageSize: Int,
-                                       transactionMetadata: CleanedTransactionMetadata,
-                                       stats: CleanerStats): Boolean = {
+  private def buildOffsetMapForSegment(
+    topicPartition: TopicPartition,
+    segment: LogSegment,
+    map: OffsetMap,
+    startOffset: Long,
+    maxLogMessageSize: Int,
+    transactionMetadata: CleanedTransactionMetadata,
+    stats: CleanerStats): Boolean = {
     var position = segment.offsetIndex.lookup(startOffset).position
     val maxDesiredMapSize = (map.slots * this.dupBufferLoadFactor).toInt
     while (position < segment.log.sizeInBytes) {
@@ -838,7 +872,7 @@ private[log] class Cleaner(val id: Int,
       stats.indexBytesRead(bytesRead)
 
       // if we didn't read even one complete message, our read buffer may be too small
-      if(position == startPosition)
+      if (position == startPosition)
         growBuffers(maxLogMessageSize)
     }
     restoreBuffers()
@@ -892,9 +926,9 @@ private class CleanerStats(time: Time = Time.SYSTEM) {
     endTime = time.milliseconds
   }
 
-  def elapsedSecs = (endTime - startTime)/1000.0
+  def elapsedSecs = (endTime - startTime) / 1000.0
 
-  def elapsedIndexSecs = (mapCompleteTime - startTime)/1000.0
+  def elapsedIndexSecs = (mapCompleteTime - startTime) / 1000.0
 
 }
 
@@ -912,8 +946,9 @@ private case class LogToClean(topicPartition: TopicPartition, log: Log, firstDir
 }
 
 private[log] object CleanedTransactionMetadata {
-  def apply(abortedTransactions: List[AbortedTxn],
-            transactionIndex: Option[TransactionIndex] = None): CleanedTransactionMetadata = {
+  def apply(
+    abortedTransactions: List[AbortedTxn],
+    transactionIndex: Option[TransactionIndex] = None): CleanedTransactionMetadata = {
     val queue = mutable.PriorityQueue.empty[AbortedTxn](new Ordering[AbortedTxn] {
       override def compare(x: AbortedTxn, y: AbortedTxn): Int = x.firstOffset compare y.firstOffset
     }.reverse)
@@ -930,8 +965,9 @@ private[log] object CleanedTransactionMetadata {
  * the log during a round of cleaning. This class is responsible for deciding when transaction markers can
  * be removed and is therefore also responsible for updating the cleaned transaction index accordingly.
  */
-private[log] class CleanedTransactionMetadata(val abortedTransactions: mutable.PriorityQueue[AbortedTxn],
-                                              val transactionIndex: Option[TransactionIndex] = None) {
+private[log] class CleanedTransactionMetadata(
+  val abortedTransactions: mutable.PriorityQueue[AbortedTxn],
+  val transactionIndex: Option[TransactionIndex] = None) {
   val ongoingCommittedTxns = mutable.Set.empty[Long]
   val ongoingAbortedTxns = mutable.Map.empty[Long, AbortedTransactionMetadata]
 

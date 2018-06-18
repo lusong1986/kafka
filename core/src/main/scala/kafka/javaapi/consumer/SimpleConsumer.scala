@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 package kafka.javaapi.consumer
 
@@ -25,13 +25,14 @@ import kafka.javaapi.OffsetRequest
  * A consumer of kafka messages
  */
 @deprecated("This class has been deprecated and will be removed in a future release. " +
-            "Please use org.apache.kafka.clients.consumer.KafkaConsumer instead.", "0.11.0.0")
+  "Please use org.apache.kafka.clients.consumer.KafkaConsumer instead.", "0.11.0.0")
 @threadsafe
-class SimpleConsumer(val host: String,
-                     val port: Int,
-                     val soTimeout: Int,
-                     val bufferSize: Int,
-                     val clientId: String) {
+class SimpleConsumer(
+  val host: String,
+  val port: Int,
+  val soTimeout: Int,
+  val bufferSize: Int,
+  val clientId: String) {
 
   private val underlying = new kafka.consumer.SimpleConsumer(host, port, soTimeout, bufferSize, clientId)
 
