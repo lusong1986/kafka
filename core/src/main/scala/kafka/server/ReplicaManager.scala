@@ -18,37 +18,85 @@ package kafka.server
 
 import java.io.File
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicLong }
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.Lock
 
-import com.yammer.metrics.core.Gauge
-import kafka.api._
-import kafka.cluster.{ BrokerEndPoint, Partition, Replica }
-import kafka.controller.{ KafkaController, StateChangeLogger }
-import kafka.log.{ Log, LogAppendInfo, LogManager }
-import kafka.metrics.KafkaMetricsGroup
-import kafka.server.QuotaFactory.{ QuotaManagers, UnboundedQuota }
-import kafka.server.checkpoints.OffsetCheckpointFile
-import kafka.utils._
-import kafka.zk.KafkaZkClient
+import scala.collection.Iterable
+import scala.collection.Iterator
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.asScalaSetConverter
+import scala.collection.JavaConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.mutableMapAsJavaMapConverter
+import scala.collection.Map
+import scala.collection.Seq
+import scala.collection.Set
+import scala.collection.mutable
+
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors._
+import org.apache.kafka.common.errors.ControllerMovedException
+import org.apache.kafka.common.errors.CorruptRecordException
+import org.apache.kafka.common.errors.InvalidTimestampException
+import org.apache.kafka.common.errors.InvalidTopicException
+import org.apache.kafka.common.errors.KafkaStorageException
+import org.apache.kafka.common.errors.LogDirNotFoundException
+import org.apache.kafka.common.errors.NotLeaderForPartitionException
+import org.apache.kafka.common.errors.OffsetOutOfRangeException
+import org.apache.kafka.common.errors.PolicyViolationException
+import org.apache.kafka.common.errors.RecordBatchTooLargeException
+import org.apache.kafka.common.errors.RecordTooLargeException
+import org.apache.kafka.common.errors.ReplicaNotAvailableException
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException
 import org.apache.kafka.common.internals.Topic
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.common.protocol.Errors.UNKNOWN_TOPIC_OR_PARTITION
 import org.apache.kafka.common.protocol.Errors.KAFKA_STORAGE_ERROR
-import org.apache.kafka.common.record._
-import org.apache.kafka.common.requests.DescribeLogDirsResponse.{ LogDirInfo, ReplicaInfo }
-import org.apache.kafka.common.requests.EpochEndOffset._
+import org.apache.kafka.common.protocol.Errors.UNKNOWN_TOPIC_OR_PARTITION
+import org.apache.kafka.common.record.MemoryRecords
+import org.apache.kafka.common.record.RecordBatch
+import org.apache.kafka.common.record.Records
+import org.apache.kafka.common.record.RecordsProcessingStats
+import org.apache.kafka.common.requests.DeleteRecordsRequest
+import org.apache.kafka.common.requests.DeleteRecordsResponse
+import org.apache.kafka.common.requests.DescribeLogDirsResponse
+import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo
+import org.apache.kafka.common.requests.DescribeLogDirsResponse.ReplicaInfo
+import org.apache.kafka.common.requests.EpochEndOffset
+import org.apache.kafka.common.requests.EpochEndOffset.UNDEFINED_EPOCH_OFFSET
 import org.apache.kafka.common.requests.FetchRequest.PartitionData
 import org.apache.kafka.common.requests.FetchResponse.AbortedTransaction
+import org.apache.kafka.common.requests.IsolationLevel
+import org.apache.kafka.common.requests.LeaderAndIsrRequest
+import org.apache.kafka.common.requests.LeaderAndIsrResponse
 import org.apache.kafka.common.requests.ProduceResponse.PartitionResponse
-import org.apache.kafka.common.requests._
+import org.apache.kafka.common.requests.StopReplicaRequest
+import org.apache.kafka.common.requests.UpdateMetadataRequest
 import org.apache.kafka.common.utils.Time
 
-import scala.collection.JavaConverters._
-import scala.collection._
+import com.yammer.metrics.core.Gauge
+
+import kafka.api.KAFKA_1_0_IV0
+import kafka.api.Request
+import kafka.cluster.BrokerEndPoint
+import kafka.cluster.Partition
+import kafka.cluster.Replica
+import kafka.controller.KafkaController
+import kafka.controller.StateChangeLogger
+import kafka.log.Log
+import kafka.log.LogAppendInfo
+import kafka.log.LogManager
+import kafka.metrics.KafkaMetricsGroup
+import kafka.server.QuotaFactory.QuotaManagers
+import kafka.server.QuotaFactory.UnboundedQuota
+import kafka.server.checkpoints.OffsetCheckpointFile
+import kafka.utils.Exit
+import kafka.utils.Logging
+import kafka.utils.Pool
+import kafka.utils.Scheduler
+import kafka.utils.ShutdownableThread
+import kafka.utils.threadsafe
+import kafka.zk.KafkaZkClient
 
 /*
  * Result metadata of a log append operation on the log
